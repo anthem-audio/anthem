@@ -20,6 +20,9 @@
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../helpers/test_project.dart';
 
@@ -35,6 +38,43 @@ class _DisposableTestService implements DisposableService {
 class _NonDisposableTestService {}
 
 void main() {
+  test('application settings follow the current session preferences', () async {
+    final originalPreferences = SharedPreferencesAsyncPlatform.instance;
+    addTearDown(() {
+      ServiceRegistry.setSessionPreferences(null);
+      SharedPreferencesAsyncPlatform.instance = originalPreferences;
+    });
+
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.withData({
+          'application.projectsDirectory': '/first/projects',
+        });
+    final firstPreferences = SharedPreferencesAsync();
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.withData({
+          'application.projectsDirectory': '/second/projects',
+        });
+    final secondPreferences = SharedPreferencesAsync();
+
+    ServiceRegistry.setSessionPreferences(firstPreferences);
+    final firstSettings = ServiceRegistry.applicationSettings;
+    expect(ServiceRegistry.applicationSettings, same(firstSettings));
+    expect(await firstSettings.projectsDirectoryOverride, '/first/projects');
+
+    ServiceRegistry.setSessionPreferences(secondPreferences);
+    expect(ServiceRegistry.applicationSettings, isNot(same(firstSettings)));
+    expect(
+      await ServiceRegistry.applicationSettings.projectsDirectoryOverride,
+      '/second/projects',
+    );
+
+    ServiceRegistry.setSessionPreferences(firstPreferences);
+    expect(
+      await ServiceRegistry.applicationSettings.projectsDirectoryOverride,
+      '/first/projects',
+    );
+  });
+
   test('project-scoped factory overrides are applied on initialization', () {
     final project = createTestProject(includeSequence: false);
     final projectViewModel = ProjectViewModel();

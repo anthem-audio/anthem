@@ -37,6 +37,39 @@ std::optional<std::shared_ptr<NodePort>> getPortFromListById(
 }
 } // namespace
 
+void Node::refreshAvailablePorts() {
+  audioInputAvailable.clear();
+  for (auto& port : *audioInputPorts()) {
+    if (port->isAvailable())
+      audioInputAvailable.push_back(port);
+  }
+  audioOutputAvailable.clear();
+  for (auto& port : *audioOutputPorts()) {
+    if (port->isAvailable())
+      audioOutputAvailable.push_back(port);
+  }
+  controlInputAvailable.clear();
+  for (auto& port : *controlInputPorts()) {
+    if (port->isAvailable())
+      controlInputAvailable.push_back(port);
+  }
+  controlOutputAvailable.clear();
+  for (auto& port : *controlOutputPorts()) {
+    if (port->isAvailable())
+      controlOutputAvailable.push_back(port);
+  }
+  eventInputAvailable.clear();
+  for (auto& port : *eventInputPorts()) {
+    if (port->isAvailable())
+      eventInputAvailable.push_back(port);
+  }
+  eventOutputAvailable.clear();
+  for (auto& port : *eventOutputPorts()) {
+    if (port->isAvailable())
+      eventOutputAvailable.push_back(port);
+  }
+}
+
 std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
   for (auto& port : *this->audioInputPorts()) {
     if (port->id() == id) {
@@ -105,12 +138,8 @@ std::optional<std::shared_ptr<NodePort>> Node::getOutputPortById(
   return std::nullopt;
 }
 
-std::optional<std::shared_ptr<Processor>> Node::getProcessor() {
+std::shared_ptr<Processor> Node::getProcessor() {
   auto& processor = this->processor();
-
-  if (!processor.has_value()) {
-    return std::nullopt;
-  }
 
   return rfl::visit(
       [](auto const& field) -> std::shared_ptr<Processor> {
@@ -128,7 +157,7 @@ std::optional<std::shared_ptr<Processor>> Node::getProcessor() {
 
         return std::static_pointer_cast<Processor>(field.value());
       },
-      *processor);
+      processor);
 }
 
 } // namespace anthem

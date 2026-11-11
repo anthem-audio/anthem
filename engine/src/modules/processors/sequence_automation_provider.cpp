@@ -23,6 +23,7 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace anthem {
 
@@ -292,12 +293,20 @@ void SequenceAutomationProviderProcessor::rt_processBlock(RuntimeState& state,
 }
 
 void SequenceAutomationProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .controlOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = controlOutputPortId,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void SequenceAutomationProviderProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto outputControlBuffer = context.getOutputControlBuffer(
-      SequenceAutomationProviderProcessorModelBase::controlOutputPortId);
+  auto outputControlBuffer =
+      context.getOutputControlBuffer(SequenceAutomationProviderProcessor::controlOutputPortId);
 
   auto& engineRuntimeServices = context.rt_getEngineRuntimeServices();
   auto& transport = engineRuntimeServices.rt_getTransport();

@@ -31,6 +31,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -51,9 +52,6 @@ class MockProjectController extends Mock implements ProjectController {
   void openPatternInPianoRoll(Id patternID) {
     super.noSuchMethod(Invocation.method(#openPatternInPianoRoll, [patternID]));
   }
-
-  @override
-  Future<void> publishProcessingGraph() => Future<void>.value();
 }
 
 class MockTrackController extends Mock implements TrackController {
@@ -62,27 +60,21 @@ class MockTrackController extends Mock implements TrackController {
     bool includeCollapsedTracks = false,
   }) {
     return super.noSuchMethod(
-          Invocation.method(#getTracksIterable, [], {
-            #includeCollapsedTracks: includeCollapsedTracks,
-          }),
-          returnValue: const <(Id, bool, int)>[],
-        )
-        as Iterable<(Id, bool, int)>;
+      Invocation.method(#getTracksIterable, [], {
+        #includeCollapsedTracks: includeCollapsedTracks,
+      }),
+      returnValue: const <(Id, bool, int)>[],
+    ) as Iterable<(Id, bool, int)>;
   }
 
   @override
   ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
-    required Id arrangementId,
     required Iterable<Id> clipIds,
   }) {
     return super.noSuchMethod(
-          Invocation.method(#deleteClips, [], {
-            #arrangementId: arrangementId,
-            #clipIds: clipIds,
-          }),
-          returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
-        )
-        as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
+      Invocation.method(#deleteClips, [], {#clipIds: clipIds}),
+      returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
+    ) as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
   }
 
   @override
@@ -128,8 +120,12 @@ Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
       }
     }
 
-    for (final childTrackId in track.childTracks) {
-      yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+    if (includeCollapsedTracks ||
+        track.type != TrackType.group ||
+        viewModel.isGroupExpanded(trackId)) {
+      for (final childTrackId in track.childTracks) {
+        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      }
     }
   }
 
@@ -188,11 +184,9 @@ class _ArrangerControllerTestFixture {
       trackOrder: const [_TrackIds.a, _TrackIds.b],
       sendTrackOrder: const [_TrackIds.s, _TrackIds.master],
     );
-    final viewModel = ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    final viewModel = ArrangerViewModel(project: project)
+      ..baseTrackHeight = 60
+      ..timeRange = TimeRange(0, 960);
 
     AnthemStore.instance.projects[project.id] = project;
     final mockProjectController = MockProjectController();
@@ -266,24 +260,19 @@ void main() {
 
         expect(fixture.viewModel.maxVerticalScrollPosition, 0);
         expect(fixture.viewModel.verticalScrollPosition, 0);
-        expect(
-          fixture.viewModel.trackPositionCalculator.getTrackPosition(0),
-          0,
-        );
+        expect(fixture.viewModel.trackLayout.rowLayoutAt(0).contentSpan.top, 0);
       },
     );
   });
 
   group('automation target resolution', () {
-    test('uses node owner metadata for track and device parameters', () {
+    test('uses node owner metadata for track and device parameters', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
       final mockProjectController = MockProjectController();
 
       AnthemStore.instance.projects[project.id] = project;
@@ -302,6 +291,7 @@ void main() {
         ServiceRegistry.forProject(project.id).arrangerController;
         final track = project.tracks[project.trackOrder.first]!;
         final utilityNode = track.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -326,6 +316,7 @@ void main() {
         final device = track.requireProcessing.devices.single;
         final deviceNode =
             project.processingGraph.nodes[device.nodeIds.single]!;
+        _describeTestParameters(deviceNode);
         final frequencyPort = deviceNode.getPortById(
           ToneGeneratorProcessorModel.frequencyPortId,
         );
@@ -353,9 +344,9 @@ void main() {
           ),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
@@ -388,15 +379,13 @@ void main() {
       },
     );
 
-    test('parameter touches update existing automation target', () {
+    test('parameter touches update existing automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -407,11 +396,11 @@ void main() {
       );
 
       try {
-        final controller = ServiceRegistry.forProject(
-          project.id,
-        ).arrangerController;
+        final controller = ServiceRegistry.forProject(project.id)
+            .arrangerController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -440,21 +429,19 @@ void main() {
           equals(UtilityProcessorModel.gainPortId),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
-    test('parameter touches update last tweaked automation target', () {
+    test('parameter touches update last tweaked automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -467,9 +454,9 @@ void main() {
       try {
         final services = ServiceRegistry.forProject(project.id);
         final controller = services.arrangerController;
-        final parameterController = services.parameterController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -480,8 +467,7 @@ void main() {
 
         expect(target, isNotNull);
 
-        parameterController.beginChange(node: utilityNode, port: utilityPort);
-        parameterController.commitChange(node: utilityNode, port: utilityPort);
+        utilityNode.touchControlInputParameter(utilityPort);
 
         expect(viewModel.lastTweakedAutomationTarget, isNotNull);
         expect(
@@ -497,21 +483,19 @@ void main() {
           equals(UtilityProcessorModel.gainPortId),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
-    test('direct parameter changes do not update automation target', () {
+    test('direct parameter changes do not update automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -525,6 +509,7 @@ void main() {
         ServiceRegistry.forProject(project.id).arrangerController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -533,23 +518,21 @@ void main() {
 
         expect(viewModel.lastTweakedAutomationTarget, isNull);
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
     test(
       'non-parameter control port changes do not update automation target',
-      () {
+      () async {
         fixture.dispose();
 
         final project = ProjectModel.create();
-        final viewModel = ArrangerViewModel(
-          project: project,
-          baseTrackHeight: 60,
-          timeRange: TimeRange(0, 960),
-        );
+        final viewModel = ArrangerViewModel(project: project)
+          ..baseTrackHeight = 60
+          ..timeRange = TimeRange(0, 960);
 
         AnthemStore.instance.projects[project.id] = project;
         ServiceRegistry.initializeProject(
@@ -563,6 +546,7 @@ void main() {
           ServiceRegistry.forProject(project.id).arrangerController;
           final parentTrack = project.tracks[project.trackOrder.first]!;
           final utilityNode = parentTrack.requireProcessing.utilityNode!;
+          _describeTestParameters(utilityNode);
           final nonParameterPort = NodePortModel(
             nodeId: utilityNode.id,
             id: 999,
@@ -574,9 +558,9 @@ void main() {
 
           expect(viewModel.lastTweakedAutomationTarget, isNull);
         } finally {
+          await project.dispose();
           ServiceRegistry.removeProject(project.id);
           AnthemStore.instance.projects.remove(project.id);
-          project.dispose();
         }
       },
     );
@@ -588,8 +572,7 @@ void main() {
     double? width,
     bool expectPianoRollOpened = true,
   }) {
-    final arrangementId = fixture.project.sequence.activeArrangementID!;
-    final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+    final arrangement = fixture.project.sequence.arrangement;
 
     final beforePatternIds = fixture.project.sequence.patterns.keys.toSet();
     final beforeClipIds = arrangement.clips.keys.toSet();
@@ -638,9 +621,11 @@ void main() {
     parentTrack.createAndRegisterNodes(
       fixture.project,
       fixture.project.idAllocator,
+      isSendTrack: false,
     );
 
     final utilityNode = parentTrack.requireProcessing.utilityNode!;
+    _describeTestParameters(utilityNode);
     final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
     if (parameterValue != null) {
       port.parameterValue = parameterValue;
@@ -695,10 +680,7 @@ void main() {
 
     fixture.project.sequence.patterns[pattern.id] = pattern;
 
-    final arrangement = fixture
-        .project
-        .sequence
-        .arrangements[fixture.project.sequence.activeArrangementID]!;
+    final arrangement = fixture.project.sequence.arrangement;
     final clip = ClipModel(
       idAllocator: fixture.project.idAllocator,
       patternId: pattern.id,
@@ -712,19 +694,15 @@ void main() {
 
   group('createClip', () {
     test(
-      'creates a pattern and clip in active arrangement with rounded timing',
+      'creates a pattern and clip in the arrangement with rounded timing',
       () {
-        final arrangementId = fixture.project.sequence.activeArrangementID;
-        expect(arrangementId, isNotNull);
-
         final createdIds = createClipAndGetCreatedIds(
           trackId: _TrackIds.a1,
           offset: 12.6,
           width: 47.4,
         );
 
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId!]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final clip = arrangement.clips[createdIds.clipId]!;
         final pattern =
             fixture.project.sequence.patterns[createdIds.patternId]!;
@@ -755,8 +733,7 @@ void main() {
     });
 
     test('is a single undo/redo action', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
 
       final createdIds = createClipAndGetCreatedIds(
         trackId: _TrackIds.a2a,
@@ -788,15 +765,13 @@ void main() {
     });
 
     test('rounds offset and width near integer boundaries', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-
       final createdIds = createClipAndGetCreatedIds(
         trackId: _TrackIds.s1,
         offset: 10.49,
         width: 0.51,
       );
 
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
 
       expect(clip.offset, equals(10));
@@ -806,7 +781,6 @@ void main() {
     });
 
     test('automation lane clips are created without opening an editor', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
       final (:automationLane, :port) = addUtilityAutomationLane(
         parameterValue: 0.42,
       );
@@ -818,7 +792,7 @@ void main() {
         expectPianoRollOpened: false,
       );
 
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
@@ -878,10 +852,7 @@ void main() {
         expectPianoRollOpened: false,
       );
 
-      final arrangement = fixture
-          .project
-          .sequence
-          .arrangements[fixture.project.sequence.activeArrangementID!]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
@@ -935,10 +906,7 @@ void main() {
         );
         expect(target, isNotNull);
 
-        final arrangement = fixture
-            .project
-            .sequence
-            .arrangements[fixture.project.sequence.activeArrangementID]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final beforeTrackIds = fixture.project.tracks.keys.toSet();
         final beforePatternIds = fixture.project.sequence.patterns.keys.toSet();
         final beforeClipIds = arrangement.clips.keys.toSet();
@@ -979,9 +947,8 @@ void main() {
         expect(pattern.automation.points, hasLength(2));
         expect(pattern.automation.points[0].value, closeTo(0.64, 0.000001));
         expect(pattern.automation.points[1].value, closeTo(0.64, 0.000001));
-        verify(
-          fixture.mockTrackController.setActiveTrack(automationLane.id),
-        ).called(1);
+        verify(fixture.mockTrackController.setActiveTrack(automationLane.id))
+            .called(1);
         verifyNever(
           fixture.mockProjectController.openPatternInPianoRoll(
             createdPatternIds.single,
@@ -1033,7 +1000,6 @@ void main() {
 
   group('deleteClips', () {
     test('delegates to ProjectController and updates selected clips', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
       final selectedClipA = getId();
       final selectedClipB = getId();
       final unselectedClip = getId();
@@ -1041,24 +1007,16 @@ void main() {
 
       fixture.viewModel.selectedClips.addAll([selectedClipA, selectedClipB]);
 
-      when(
-        fixture.mockTrackController.deleteClips(
-          arrangementId: arrangementId,
-          clipIds: clipIdsToDelete,
-        ),
-      ).thenReturn((
-        deletedClipIds: {selectedClipA},
-        deletedPatternIds: <Id>{},
-      ));
+      when(fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete))
+          .thenReturn((
+            deletedClipIds: {selectedClipA},
+            deletedPatternIds: <Id>{},
+          ));
 
       fixture.controller.deleteClips(clipIdsToDelete);
 
-      verify(
-        fixture.mockTrackController.deleteClips(
-          arrangementId: arrangementId,
-          clipIds: clipIdsToDelete,
-        ),
-      ).called(1);
+      verify(fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete))
+          .called(1);
 
       expect(fixture.viewModel.selectedClips.contains(selectedClipA), isFalse);
       expect(fixture.viewModel.selectedClips.contains(selectedClipB), isTrue);
@@ -1127,16 +1085,11 @@ void main() {
         expect(fixture.viewModel.lastShiftClickRange, isNull);
       },
     );
-
-    test('does nothing when there is no active arrangement', () {
-      fixture.controller.selectTrack(_TrackIds.a1);
-      fixture.project.sequence.activeArrangementID = null;
-
-      fixture.controller.shiftClickToTrack(_TrackIds.b);
-
-      fixture.expectSelectedTracks([_TrackIds.a1]);
-      expect(fixture.viewModel.lastToggledTrack, equals(_TrackIds.a1));
-      expect(fixture.viewModel.lastShiftClickRange, isNull);
-    });
   });
+}
+
+void _describeTestParameters(NodeModel node) {
+  for (final port in node.controlInputPorts) {
+    port.config.parameterConfig = ParameterConfigModel(id: port.id);
+  }
 }

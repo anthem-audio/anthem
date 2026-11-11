@@ -187,13 +187,13 @@ BoxDecoration _buttonDecorationForKey(WidgetTester tester, String keyValue) {
   final containerFinder = find.descendant(
     of: buttonFinder,
     matching: find.byWidgetPredicate((Widget widget) {
-      return widget is Container &&
+      return widget is DecoratedBox &&
           widget.decoration is BoxDecoration &&
           widget.child is ClipRRect;
     }),
   );
 
   expect(containerFinder, findsOneWidget);
-  final container = tester.widget<Container>(containerFinder);
-  return container.decoration! as BoxDecoration;
+  final container = tester.widget<DecoratedBox>(containerFinder);
+  return container.decoration as BoxDecoration;
 }

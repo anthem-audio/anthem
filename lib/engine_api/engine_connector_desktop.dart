@@ -23,7 +23,9 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:logging/logging.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
@@ -32,22 +34,27 @@ final _log = Logger('engine_connector');
 final mainExecutablePath = File(Platform.resolvedExecutable);
 const _engineIdEnvironmentKey = 'ANTHEM_ENGINE_ID';
 const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
+const _visualizationSharedMemoryIdentifierEnvironmentKey =
+    'ANTHEM_VISUALIZATION_SHARED_MEMORY_IDENTIFIER';
+const _visualizationSharedMemorySizeEnvironmentKey =
+    'ANTHEM_VISUALIZATION_SHARED_MEMORY_SIZE';
+const _visualizationSharedMemorySize = 16 * 1024 * 1024 + 128;
 
 /// Provides a way to communicate with the engine process.
 ///
 /// The [EngineConnector] class manages an engine process. It uses a socket to
 /// communicate with the process.
 ///
-/// The [send] method can be used to send messages to the engine. A message can
-/// be sent like so:
+/// The [sendMessage] method can be used to send messages to the engine:
 ///
 /// ```dart
 /// final engineConnectorID = getId();
 /// final engineConnector = EngineConnector(
 ///   engineConnectorID,
-///   (Response response) {
+///   kDebugMode: false,
+///   onMessage: (IpcMessage message) {
 ///     // Handle reply here...
-///   }
+///   },
 /// );
 ///
 /// // ...
@@ -56,10 +63,7 @@ const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
 ///
 /// final request = Heartbeat(id: id);
 ///
-/// final encoder = JsonUtf8Encoder();
-/// final requestBytes = encoder.convert(request.toJson()) as Uint8List;
-///
-/// engineConnector.send(requestBytes);
+/// engineConnector.sendMessage(request);
 /// ```
 class EngineConnector extends EngineConnectorBase {
   /// This ID is sent to the engine in its environment on launch. The engine
@@ -69,18 +73,29 @@ class EngineConnector extends EngineConnectorBase {
   final int _id;
 
   Process? _engineProcess;
+  int? _processExitCode;
+
+  @override
+  int? get processId => _engineProcess?.pid;
+
+  @override
+  int? get processExitCode => _processExitCode;
+  SharedMemoryRegion? _visualizationSharedMemory;
+  SharedMemoryRecordRingBufferReader? _visualizationRingBufferReader;
+  Timer? _visualizationReadTimer;
 
   final void Function()? _onExit;
 
   bool _initialized = false;
+  bool _shuttingDown = false;
+  Future<void>? _shutdownFuture;
+  Completer<void>? _engineConnectCompleter;
 
-  /// If any requests are sent before the engine starts and IPC is set up, this
-  /// list will hold the requests until the engine is initialized, at which
-  /// point they will all be sent.
-  final List<Uint8List> _bufferedRequests = [];
+  /// Messages buffered until the engine has connected to IPC.
+  final List<Uint8List> _bufferedMessages = [];
 
   /// Stream subscription for socket messages from the engine.
-  StreamSubscription<Uint8List>? _engineReplySub;
+  StreamSubscription<Uint8List>? _engineMessageSubscription;
 
   /// Used for integration tests to specify the path to the engine binary.
   final String? enginePathOverride;
@@ -88,28 +103,29 @@ class EngineConnector extends EngineConnectorBase {
   EngineConnector(
     this._id, {
     required super.kDebugMode,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     this._onExit,
     super.noHeartbeat = false,
     this.enginePathOverride,
   }) {
     onInit = _init();
 
-    // If any requests came in before the engine was started, send them now.
+    // Send messages buffered before IPC was ready.
     onInit.then((success) {
       if (!success) return;
-      for (final request in _bufferedRequests) {
-        send(request);
+      for (final message in _bufferedMessages) {
+        sendBytes(message);
       }
     });
   }
 
-  /// Starts the engine process, sets up IPC, and starts the reply listener
-  /// isolate.
+  /// Starts the engine process, sets up IPC, and listens for engine messages.
   Future<bool> _init() async {
     // Wait for the socket server to start, since this is what the engines will
     // connect to. This will only cause a wait when the app is first launched.
     await EngineSocketServer.instance.init;
+    if (_shuttingDown) return false;
 
     EngineSocketServer.instance.onMessage(_id, (message) {
       onReceive(message);
@@ -117,12 +133,14 @@ class EngineConnector extends EngineConnectorBase {
 
     // Set up a completer to complete when the engine has connected.
     final engineConnectCompleter = Completer<void>();
-    EngineSocketServer.instance.onConnect(
-      _id,
-      () => engineConnectCompleter.complete(),
-    );
+    _engineConnectCompleter = engineConnectCompleter;
+    EngineSocketServer.instance.onConnect(_id, () {
+      if (!engineConnectCompleter.isCompleted) {
+        engineConnectCompleter.complete();
+      }
+    });
 
-    EngineSocketServer.instance.onClose(_id, _shutdown);
+    EngineSocketServer.instance.onClose(_id, _onSocketClosed);
 
     String? developmentEnginePath;
 
@@ -147,40 +165,59 @@ class EngineConnector extends EngineConnectorBase {
 
     if (!await File(anthemPathStr).exists()) {
       _log.severe('Could not start engine. File not found: $anthemPathStr');
+      dispose();
+      return false;
+    }
+    if (_shuttingDown) return false;
+
+    try {
+      final region = SharedMemoryRegion.create(_visualizationSharedMemorySize);
+      _visualizationSharedMemory = region;
+      _visualizationRingBufferReader =
+          SharedMemoryRecordRingBufferReader.initialize(region);
+      final reader = _visualizationRingBufferReader!;
+      visualizationRecordConsumer = VisualizationRecordConsumer(
+        tryAcquire: reader.tryAcquire,
+        release: reader.release,
+        onRecord: handleVisualizationRecord,
+        availableBytes: () => reader.availableBytes,
+      );
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Could not create the visualization transport for engine $_id.',
+        error,
+        stackTrace,
+      );
+      dispose();
       return false;
     }
 
     _log.info('Starting engine from $anthemPathStr');
 
+    final visualizationSharedMemory = _visualizationSharedMemory!;
     final engineEnvironment = {
       ...AnthemLogManager.instance.childProcessEnvironment,
       ...?_debugLameEnvironment(),
       _engineIdEnvironmentKey: _id.toString(),
       _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
+      _visualizationSharedMemoryIdentifierEnvironmentKey:
+          visualizationSharedMemory.identifier,
+      _visualizationSharedMemorySizeEnvironmentKey: visualizationSharedMemory
+          .size
+          .toString(),
     };
 
     try {
-      // If we're in debug mode, start with a command line window so we can see logging
-      if (kDebugMode) {
-        if (Platform.isWindows) {
-          _setEngineProcess(
-            await Process.start('powershell', [
-              '-Command',
-              '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
-            ], environment: engineEnvironment),
-          );
-        } else {
-          _setEngineProcess(
-            await Process.start(
-              anthemPathStr,
-              [],
-              // There's no singular way to start in a shell window on Linux, so
-              // this mirrors the engine output to our standard out.
-              mode: ProcessStartMode.inheritStdio,
-              environment: engineEnvironment,
-            ),
-          );
-        }
+      // Keep the interactive debug console for ordinary Windows development.
+      // An explicit executable must be the owned child, so tests can confirm
+      // its PID and exit without leaving a child of PowerShell behind.
+      if (kDebugMode && Platform.isWindows && enginePathOverride == null) {
+        _setEngineProcess(
+          await Process.start('powershell', [
+            '-Command',
+            '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
+          ], environment: engineEnvironment),
+        );
       } else {
         _setEngineProcess(
           await Process.start(
@@ -189,7 +226,7 @@ class EngineConnector extends EngineConnectorBase {
 
             // I'm not sure why this is necessary, but the process doesn't start
             // correctly without it on Windows without this.
-            mode: Platform.isWindows
+            mode: kDebugMode || Platform.isWindows
                 ? ProcessStartMode.inheritStdio
                 : ProcessStartMode.normal,
             environment: engineEnvironment,
@@ -202,6 +239,7 @@ class EngineConnector extends EngineConnectorBase {
         error,
         stackTrace,
       );
+      dispose();
       return false;
     }
 
@@ -210,10 +248,34 @@ class EngineConnector extends EngineConnectorBase {
     // connected. _initialized is false while we wait, and this causes incoming
     // messages to be queued instead of attempting and failing to send them.
     await engineConnectCompleter.future;
+    if (_shuttingDown) return false;
 
     _initialized = true;
+    _visualizationReadTimer = Timer.periodic(
+      const Duration(milliseconds: 8),
+      (_) => pollVisualizationRecords(),
+    );
 
     return true;
+  }
+
+  @override
+  void finalizeVisualizationSharedMemorySetup() {
+    final region = _visualizationSharedMemory;
+    if (region == null) {
+      return;
+    }
+
+    try {
+      region.removeIdentifier();
+    } catch (error, stackTrace) {
+      _log.warning(
+        'Could not remove the visualization shared memory identifier for '
+        'engine $_id. The existing mappings remain usable.',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   Map<String, String>? _debugLameEnvironment() {
@@ -255,9 +317,10 @@ class EngineConnector extends EngineConnectorBase {
 
   /// Sends the given bytes to the engine.
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
+    if (_shuttingDown) return;
     if (!_initialized) {
-      _bufferedRequests.add(bytes);
+      _bufferedMessages.add(bytes);
       return;
     }
 
@@ -270,12 +333,45 @@ class EngineConnector extends EngineConnectorBase {
     EngineSocketServer.instance.send(_id, bytes);
   }
 
-  void _shutdown() {
-    // Kill engine process
-    _engineProcess?.kill();
+  void _onSocketClosed() {
+    if (_shuttingDown) return;
+    // Exit closes the socket before native audio/plugin teardown is finished.
+    // Wait for the child to exit instead of terminating it from this callback.
+    unawaited(
+      shutdown().catchError((Object error, StackTrace stackTrace) {
+        _log.warning(
+          'Engine $_id shutdown after socket closure failed.',
+          error,
+          stackTrace,
+        );
+      }),
+    );
+  }
+
+  void _shutdown({bool terminateProcess = true}) {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    _initialized = false;
+    final connecting = _engineConnectCompleter;
+    if (connecting != null && !connecting.isCompleted) connecting.complete();
+    if (terminateProcess) _engineProcess?.kill();
 
     // Unsubscribe from engine replies
-    _engineReplySub?.cancel();
+    _engineMessageSubscription?.cancel();
+    _bufferedMessages.clear();
+    EngineSocketServer.instance.cleanUpEngine(_id);
+
+    _closeVisualizationSharedMemory();
+  }
+
+  void _closeVisualizationSharedMemory() {
+    _visualizationReadTimer?.cancel();
+    _visualizationReadTimer = null;
+    visualizationRecordConsumer = null;
+    _visualizationRingBufferReader?.close();
+    _visualizationRingBufferReader = null;
+    _visualizationSharedMemory?.close();
+    _visualizationSharedMemory = null;
   }
 
   /// Stops the engine process, and cleans up the messaging infrastructure.
@@ -285,12 +381,45 @@ class EngineConnector extends EngineConnectorBase {
     super.dispose();
   }
 
+  @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) =>
+      _shutdownFuture ??= _shutdownAndWait(timeout);
+
+  Future<void> _shutdownAndWait(Duration timeout) async {
+    // Connected engines handle Exit or socket closure themselves. Incomplete
+    // startup still needs immediate termination, including a late Process.start.
+    _shutdown(terminateProcess: !_initialized);
+    super.dispose();
+    // Process.start may complete after disposal. Wait for initialization so any
+    // engine process that starts during cleanup is stopped and its exit is
+    // confirmed before cleanup completes.
+    await onInit.timeout(timeout);
+    final process = _engineProcess;
+    if (process == null) return;
+
+    try {
+      await process.exitCode.timeout(timeout);
+    } on TimeoutException {
+      process.kill(ProcessSignal.sigkill);
+      await process.exitCode.timeout(timeout);
+      throw TimeoutException(
+        'Engine $_id (PID ${process.pid}) did not exit after shutdown; '
+        'it required a forced kill.',
+        timeout,
+      );
+    }
+  }
+
   /// Sets the engine process, and attaches a listener when it stops.
   void _setEngineProcess(Process process) {
     _engineProcess = process;
 
     _engineProcess!.exitCode.then((exitCode) {
+      _processExitCode = exitCode;
+      _log.info('Engine $_id (PID ${process.pid}) exited with $exitCode.');
+      dispose();
       _onExit?.call();
     });
+    if (_shuttingDown) process.kill();
   }
 }

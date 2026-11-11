@@ -54,8 +54,7 @@ class _RecordingSequencerApi implements SequencerApi {
   void cleanUpTrack(Id trackId) {}
 
   @override
-  void compileArrangement(
-    Id arrangementId, {
+  void compileArrangement({
     List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
@@ -140,8 +139,7 @@ class _TimelineTestFixture {
         ? EngineState.running
         : EngineState.stopped;
 
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final arrangement = project.sequence.arrangement;
     final pattern = PatternModel(
       idAllocator: _testIdAllocator(),
       name: 'Pattern 1',
@@ -162,9 +160,8 @@ class _TimelineTestFixture {
         _TimelineTargetKind.pattern => TimeRangeContentSource.pattern(
           pattern.id,
         ),
-        _TimelineTargetKind.arrangement => TimeRangeContentSource.arrangement(
-          arrangement.id,
-        ),
+        _TimelineTargetKind.arrangement =>
+          const TimeRangeContentSource.arrangement(),
       },
     );
 
@@ -234,7 +231,6 @@ class _TimelineTestFixture {
                       timeRangeAnimation: timeRangeAnimation,
                     ),
                     _TimelineTargetKind.arrangement => Timeline.arrangement(
-                      arrangementID: arrangement.id,
                       timeRangeAnimation: timeRangeAnimation,
                     ),
                   };

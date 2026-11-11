@@ -27,6 +27,8 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 
+const _sectionBreakPaintOvershoot = 2.0;
+
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final Animation<double> verticalScrollPositionAnimation;
   final TimeRangeAnimation timeRangeAnimation;
@@ -60,37 +62,6 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
-    // Horizontal lines
-
-    final serviceRegistry = ServiceRegistry.forProject(project.id);
-    final viewModel = serviceRegistry.arrangerViewModel;
-    final renderedVerticalScrollPosition =
-        verticalScrollPositionAnimation.value;
-    final verticalScrollDelta =
-        viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
-
-    var i = 0;
-    final visibleRows = viewModel.trackPositionCalculator.visibleRows;
-    for (final row in visibleRows) {
-      final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
-        i,
-      );
-      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
-
-      var drawPosition = trackPosition + verticalScrollDelta;
-      if (!row.isSendTrack) {
-        drawPosition += trackHeight;
-      }
-      drawPosition--;
-
-      canvas.drawRect(
-        Rect.fromLTWH(0, drawPosition, size.width, 1),
-        majorLinePaint,
-      );
-
-      i++;
-    }
-
     // Vertical lines
 
     paintTimeGridLines(
@@ -102,6 +73,41 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
+    );
+
+    // Draw track dividers over the time grid so they stay continuous at
+    // intersections with vertical lines.
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final renderedVerticalScrollPosition =
+        verticalScrollPositionAnimation.value;
+    for (final divider in viewModel.trackLayout.dividerLayouts) {
+      canvas.drawRect(
+        Rect.fromLTWH(
+          0,
+          divider.bounds.top - renderedVerticalScrollPosition,
+          size.width,
+          divider.bounds.height,
+        ),
+        majorLinePaint,
+      );
+    }
+
+    final addTrackControl = viewModel.trackLayout.addTrackControlSpan;
+    final regularToSendGap = viewModel.trackLayout.regularToSendGapSpan;
+    canvas.drawRect(
+      Rect.fromLTRB(
+        0,
+        addTrackControl.top -
+            renderedVerticalScrollPosition -
+            _sectionBreakPaintOvershoot,
+        size.width,
+        regularToSendGap.bottom -
+            renderedVerticalScrollPosition +
+            _sectionBreakPaintOvershoot,
+      ),
+      Paint()..color = AnthemTheme.panel.border,
     );
   }
 

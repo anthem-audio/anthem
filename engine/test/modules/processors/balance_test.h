@@ -38,11 +38,11 @@ class BalanceProcessorTest : public juce::UnitTest {
     auto node = graph_test_helpers::makeNode(nodeId);
 
     node->audioInputPorts()->push_back(graph_test_helpers::makePort(
-        BalanceProcessorModelBase::audioInputPortId, nodeId, NodePortDataType::audio));
+        BalanceProcessor::audioInputPortId, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(graph_test_helpers::makePort(
-        BalanceProcessorModelBase::audioOutputPortId, nodeId, NodePortDataType::audio));
+        BalanceProcessor::audioOutputPortId, nodeId, NodePortDataType::audio));
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        BalanceProcessorModelBase::balancePortId, nodeId, NodePortDataType::control));
+        BalanceProcessor::balancePortId, nodeId, NodePortDataType::control));
 
     return node;
   }
@@ -68,15 +68,15 @@ public:
 
     auto& context =
         graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
-    auto outputBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
+    auto outputBuffer = context.getOutputAudioBuffer(BalanceProcessor::audioOutputPortId);
     auto inputBuffer =
         graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
             NodeProcessContext::BufferDirection::input,
-            BalanceProcessorModelBase::audioInputPortId));
+            BalanceProcessor::audioInputPortId));
     auto balanceBuffer =
         graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
-            BalanceProcessorModelBase::balancePortId));
+            BalanceProcessor::balancePortId));
 
     const std::array<float, blockSize> balanceValues{0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
     const std::array<float, blockSize> expectedLeftGains{1.0f, 1.0f, 1.0f, 0.5f, 0.0f};

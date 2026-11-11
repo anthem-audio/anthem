@@ -20,12 +20,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'sequence_note_provider.g.dart';
 
@@ -62,26 +62,18 @@ class SequenceNoteProviderProcessorModel
   ) => _$SequenceNoteProviderProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      eventOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: eventOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.event),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    eventOutputPortIds: [eventOutputPortId],
+  );
 
-  static int get eventOutputPortId =>
+  static const int eventOutputPortId =
       _SequenceNoteProviderProcessorModel.eventOutputPortId;
 }
 
 abstract class _SequenceNoteProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int eventOutputPortId = 0;
 
   Id nodeId;

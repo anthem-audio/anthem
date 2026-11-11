@@ -34,18 +34,24 @@ class TimelinePainter extends CustomPainter {
     required this.ticksPerQuarter,
     required this.defaultTimeSignature,
     required this.timeSignatureChanges,
+    required this.bottomBorderHeight,
   }) : super(repaint: repaint);
 
   final TimeRangeAnimation timeRangeAnimation;
   final int ticksPerQuarter;
   final TimeSignatureModel defaultTimeSignature;
   final List<TimeSignatureChangeModel> timeSignatureChanges;
+  final double bottomBorderHeight;
 
   double get timeViewStart => timeRangeAnimation.renderedStart;
   double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final contentHeight = size.height > bottomBorderHeight
+        ? size.height - bottomBorderHeight
+        : 0.0;
+
     // Draw a bottom border - we don't make this a separate widget because we
     // want to draw the playhead line on top of it.
     final borderPaint = Paint()
@@ -57,7 +63,7 @@ class TimelinePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
-      Rect.fromLTWH(0, size.height - 1, size.width, 1),
+      Rect.fromLTWH(0, contentHeight, size.width, size.height - contentHeight),
       borderPaint,
     );
 
@@ -83,7 +89,7 @@ class TimelinePainter extends CustomPainter {
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
       divisionChanges: minorDivisionChanges,
-      size: Size(size.width, size.height - 1),
+      size: Size(size.width, contentHeight),
       paint: markerPaint,
       height: 5,
     );
@@ -108,7 +114,7 @@ class TimelinePainter extends CustomPainter {
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
       divisionChanges: majorDivisionChanges,
-      size: Size(size.width, size.height - 1),
+      size: Size(size.width, contentHeight),
       paint: markerPaint,
       height: 13,
     );
@@ -155,7 +161,7 @@ class TimelinePainter extends CustomPainter {
 
         // Don't draw numbers that are off-screen
         if (x >= -50) {
-          canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
+          canvas.drawRect(Rect.fromLTWH(x, 0, 1, contentHeight), markerPaint);
 
           // Bar number
           TextSpan span = TextSpan(
@@ -196,7 +202,8 @@ class TimelinePainter extends CustomPainter {
     return oldDelegate.timeRangeAnimation != timeRangeAnimation ||
         oldDelegate.ticksPerQuarter != ticksPerQuarter ||
         oldDelegate.defaultTimeSignature != defaultTimeSignature ||
-        oldDelegate.timeSignatureChanges != timeSignatureChanges;
+        oldDelegate.timeSignatureChanges != timeSignatureChanges ||
+        oldDelegate.bottomBorderHeight != bottomBorderHeight;
   }
 
   @override

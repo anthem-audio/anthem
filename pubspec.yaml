@@ -1,13 +1,15 @@
 name: anthem
 description: An open-source digital audio workstation.
 publish_to: 'none'
-version: 0.0.0-prealpha.1
+version: 0.0.0-prealpha.2
 
 environment:
-  sdk: ">=3.12.0 <4.0.0"
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.6"
 
 workspace:
   - codegen
+  - native/anthem_native_ipc
   - tools/anthem_analyzer_plugin
 
 dependencies:
@@ -20,18 +22,22 @@ dependencies:
 
   anthem_codegen:
     path: codegen
+  anthem_native_ipc:
+    path: native/anthem_native_ipc
 
   archive: ^4.0.9
   args: ^2.6.0
   collection: ^1.17.1
   colorize: ^3.0.0
   crypto: ^3.0.6
-  file_picker: ^11.0.2
-  flutter_mobx: ^2.3.0
+  cupertino_icons: ^2.0.0
+  file_selector: ^1.1.0
+  flutter_mobx: ^2.4.0
   flutter_shaders: ^0.1.3
   flutter_svg: ^2.0.16
   fuzzywuzzy: ^1.2.0
   logging: ^1.3.0
+  material_ui: ^1.5.0
   meta: ^1.17.0
   mobx: ^2.5.0
   provider: ^6.0.2
@@ -41,29 +47,33 @@ dependencies:
   pointer_lock:
     git:
       url: https://github.com/josh-audio/pointer_lock.git
-      ref: staging-spm-event-deltas
+      ref: codex/pointer-lock-drag-fallback
   mockito: ^5.4.5
   path: ^1.9.1
-  window_manager: ^0.5.0
+  path_provider: ^2.1.6
+  window_manager: ^0.5.2
   okcolor: ^1.1.0
   web: ^1.1.1
   shelf_proxy: ^1.0.4
   shelf: ^1.4.2
   shelf_static: ^1.1.3
   url_launcher: ^6.3.2
-  flutter_markdown_plus: ^1.0.7
+  flutter_markdown_plus: ^1.0.12
   shared_preferences: ^2.5.5
+  yaml: ^3.1.3
 
 dev_dependencies:
-  analyzer: ^12.1.0
+  test: ^1.31.0
+  analyzer: ^13.3.0
   build_runner: ^2.6.0
   build: ^4.0.1
   flutter_lints: ^6.0.0
   mobx_codegen: ^2.7.2
   pub_semver: ^2.2.0
   source_gen: ^4.0.1
-  yaml: ^3.1.3
   shared_preferences_platform_interface: ^2.4.2
+  file_selector_platform_interface: ^2.7.0
+  path_provider_platform_interface: ^2.1.3
 
 flutter:
   uses-material-design: true
@@ -75,47 +85,20 @@ flutter:
 
   assets:
   - assets/engine/
+  - packages/anthem/logic/project_file/web/project_archive_worker.js
+  - packages/anthem/logic/project_file/web/vendor/zipjs/zip-native.min.js
+  - packages/anthem/logic/project_file/web/vendor/zipjs/LICENSE
 
-  - assets/icons_old/
-  - assets/icons_old/add/
-  - assets/icons_old/arranger/
-  - assets/icons_old/arranger/clip/
-  - assets/icons_old/audio_editor/
-  - assets/icons_old/automation_editor/
-  - assets/icons_old/bottom_bar/
-  - assets/icons_old/channel/
-  - assets/icons_old/channel_rack/
-  - assets/icons_old/controller_rack/
-  - assets/icons_old/device_panel/
-  - assets/icons_old/edit/
-  - assets/icons_old/instrument_and_effect_rack/
-  - assets/icons_old/main/
-  - assets/icons_old/main_toolbar/
-  - assets/icons_old/misc/
-  - assets/icons_old/mixer/
-  - assets/icons_old/not_clickable/
-  - assets/icons_old/note_editor/
-  - assets/icons_old/options/
-  - assets/icons_old/scrollbar/
-  - assets/icons_old/small/
-  - assets/icons_old/tools/
-  - assets/icons_old/topbar/
-
-  - assets/icons/
-  - assets/icons/add/
-  - assets/icons/arranger/
-  - assets/icons/arranger/clip/
-  - assets/icons/audio_editor/
-  - assets/icons/automation_editor/
-  - assets/icons/bottom_bar/
-  - assets/icons/channel_rack/
+  - assets/icons/arrows/
+  - assets/icons/brand/
+  - assets/icons/clips/
+  - assets/icons/devices/
   - assets/icons/edit/
-  - assets/icons/icon/
-  - assets/icons/instrument_and_effect_rack/
-  - assets/icons/main_toolbar/
-  - assets/icons/misc/
+  - assets/icons/general/
   - assets/icons/mixer/
-  - assets/icons/note_editor/
-  - assets/icons/options/
-  - assets/icons/small/
+  - assets/icons/panels/
+  - assets/icons/piano-roll/
+  - assets/icons/playback/
   - assets/icons/tools/
+  - assets/icons/track/
+  - assets/icons/window/

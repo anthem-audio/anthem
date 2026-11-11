@@ -57,9 +57,31 @@ public:
   VisualizationBrokerTest() : juce::UnitTest("VisualizationBrokerTest", "Anthem") {}
 
   void runTest() override {
+    testExplicitStartAndRestart();
     testDuplicateIdReleaseKeepsNewestProvider();
     testCurrentDuplicateReleaseFallsBackToPreviousProvider();
     testOutboundSuppressionSkipsThenDiscardsUpdates();
+  }
+
+  void testExplicitStartAndRestart() {
+    beginTest("Visualization publishing starts explicitly and can restart after disposal");
+    auto& broker = VisualizationBroker::getInstance();
+    const auto previousInterval = broker.updateIntervalMs;
+    expect(!broker.isTimerRunning());
+    broker.setUpdateInterval(10.0);
+    expect(!broker.isTimerRunning(), "Configuring the interval must not start publishing.");
+    broker.start();
+    expect(broker.isTimerRunning());
+    expectEquals(broker.getTimerInterval(), 10);
+    broker.setUpdateInterval(20.0);
+    expectEquals(broker.getTimerInterval(), 20);
+    broker.dispose();
+    expect(!broker.isTimerRunning());
+    broker.setUpdateInterval(previousInterval);
+    expect(!broker.isTimerRunning());
+    broker.start();
+    expect(broker.isTimerRunning());
+    broker.dispose();
   }
 
   void testDuplicateIdReleaseKeepsNewestProvider() {

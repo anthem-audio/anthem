@@ -18,7 +18,6 @@
 */
 
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart' show TimeViewModel;
@@ -26,6 +25,8 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
+import 'package:anthem/widgets/editors/arranger/track_layout.dart';
+import 'package:anthem/widgets/editors/arranger/track_row.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
@@ -33,6 +34,9 @@ import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
+
+export 'track_layout.dart';
+export 'track_row.dart';
 
 part 'view_model.g.dart';
 
@@ -97,73 +101,6 @@ class ArrangerHitTestResult {
   });
 }
 
-class AutomationParameterTarget {
-  final Id ownerTrackId;
-  final Id nodeId;
-  final int portId;
-  final String ownerName;
-  final String parameterName;
-
-  const AutomationParameterTarget({
-    required this.ownerTrackId,
-    required this.nodeId,
-    required this.portId,
-    required this.ownerName,
-    required this.parameterName,
-  });
-
-  String get title => '$ownerName $parameterName';
-}
-
-class PhantomAutomationLaneInfo {
-  final Id id;
-  final Id parentTrackId;
-  final AutomationParameterTarget? target;
-
-  const PhantomAutomationLaneInfo({
-    required this.id,
-    required this.parentTrackId,
-    required this.target,
-  });
-
-  String get title => target?.title ?? 'No parameter selected';
-}
-
-sealed class ArrangerRow {
-  final bool isSendTrack;
-  final int trackDepth;
-
-  const ArrangerRow({required this.isSendTrack, required this.trackDepth});
-
-  Id get rowId;
-}
-
-class TrackArrangerRow extends ArrangerRow {
-  final Id trackId;
-
-  const TrackArrangerRow({
-    required this.trackId,
-    required super.isSendTrack,
-    required super.trackDepth,
-  });
-
-  @override
-  Id get rowId => trackId;
-}
-
-class PhantomAutomationArrangerRow extends ArrangerRow {
-  final PhantomAutomationLaneInfo phantomLane;
-
-  const PhantomAutomationArrangerRow({
-    required this.phantomLane,
-    required super.isSendTrack,
-    required super.trackDepth,
-  });
-
-  @override
-  Id get rowId => phantomLane.id;
-}
-
 abstract class _ArrangerViewModel with Store {
   final ProjectModel project;
   final ProjectId projectId;
@@ -172,7 +109,7 @@ abstract class _ArrangerViewModel with Store {
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  TimeRange timeRange;
+  TimeRange timeRange = TimeRange(0, 3072);
 
   TimeRangeViewport? _timeRangeViewport;
 
@@ -185,20 +122,23 @@ abstract class _ArrangerViewModel with Store {
 
     return _timeRangeViewport = TimeRangeViewport(
       target: timeRange,
-      contentSource: const TimeRangeContentSource.activeArrangement(),
+      contentSource: const TimeRangeContentSource.arrangement(),
     );
   }
 
   @observable
-  double baseTrackHeight;
+  double baseTrackHeight = defaultBaseTrackHeight;
 
-  /// Per-track modifier that is multiplied by baseTrackHeight and clamped to
-  /// get the actual height for each track
+  /// Per-row modifier that is multiplied by the row's zoom-scaled base height
+  /// and clamped to get its actual height.
   @observable
   ObservableMap<Id, double> trackHeightModifiers;
 
   /// Whether each track's automation lanes are expanded in the arranger.
   final ObservableMap<Id, bool> automationExpandedByTrackId;
+
+  /// Whether each group track's child tracks are visible in the arranger.
+  final ObservableMap<Id, bool> groupExpandedByTrackId;
 
   /// Most recent automatable parameter changed by user/plugin interaction.
   @observable
@@ -240,6 +180,11 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? hoveredClip;
 
+  /// The arranger header row whose header or solid color indicator is under
+  /// the mouse cursor, if any.
+  @observable
+  Id? hoveredTrackHeaderRowId;
+
   /// The clip that should currently display inline automation handles, if any.
   @observable
   Id? clipWithAutomationHandles;
@@ -266,7 +211,7 @@ abstract class _ArrangerViewModel with Store {
   clipCreateHint;
 
   /// Calculates and caches the size and position of tracks in the current view.
-  late final TrackPositionAndSize trackPositionCalculator;
+  late final TrackLayout trackLayout;
 
   final visibleClips = CanvasAnnotationSet<Id>();
   final visibleResizeAreas =
@@ -281,25 +226,22 @@ abstract class _ArrangerViewModel with Store {
   final _phantomAutomationLaneIdByParentTrackId = <Id, Id>{};
   Id _nextPhantomAutomationLaneId = -1;
 
-  _ArrangerViewModel({
-    required this.project,
-    required this.baseTrackHeight,
-    required this.timeRange,
-  }) : projectId = project.id,
-       trackHeightModifiers = ObservableMap.of(
-         project.tracks.nonObservableInner.map(
-           (key, value) => MapEntry(key, 1),
-         ),
-       ),
-       automationExpandedByTrackId = ObservableMap.of(
-         project.tracks.nonObservableInner.map(
-           (key, value) => MapEntry(key, false),
-         ),
-       ) {
-    trackPositionCalculator = TrackPositionAndSize(
-      project,
-      this as ArrangerViewModel,
-    );
+  _ArrangerViewModel({required this.project})
+    : projectId = project.id,
+      trackHeightModifiers = ObservableMap.of(
+        project.tracks.nonObservableInner.map((key, value) => MapEntry(key, 1)),
+      ),
+      automationExpandedByTrackId = ObservableMap.of(
+        project.tracks.nonObservableInner.map(
+          (key, value) => MapEntry(key, false),
+        ),
+      ),
+      groupExpandedByTrackId = ObservableMap.of(
+        project.tracks.nonObservableInner.map(
+          (key, value) => MapEntry(key, true),
+        ),
+      ) {
+    trackLayout = TrackLayout();
   }
 
   void ensureRenderCachesForDevicePixelRatio(double devicePixelRatio) {
@@ -331,8 +273,40 @@ abstract class _ArrangerViewModel with Store {
   double get maxVerticalScrollPosition =>
       (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
 
-  void refreshTrackLayout(double editorHeight) {
-    trackPositionCalculator.invalidate(editorHeight);
+  void refreshTrackLayout(
+    double editorHeight, {
+    double headerWidth = TrackLayout.defaultHeaderWidth,
+  }) {
+    this.editorHeight = editorHeight;
+
+    trackLayout.recalculate(
+      rows: getVisibleTrackRows(),
+      rowHeightFor: _getRowHeight,
+      headerWidth: headerWidth,
+      viewportHeight: editorHeight,
+    );
+
+    final hoveredTrackHeaderRowId = this.hoveredTrackHeaderRowId;
+    if (hoveredTrackHeaderRowId != null &&
+        trackLayout.tryRowLayoutForId(hoveredTrackHeaderRowId) == null) {
+      this.hoveredTrackHeaderRowId = null;
+    }
+
+    regularToSendGapHeight = trackLayout.regularToSendGapSpan.height;
+    scrollAreaHeight = trackLayout.contentHeight;
+    verticalScrollPosition = verticalScrollPosition.clamp(
+      0.0,
+      maxVerticalScrollPosition,
+    );
+  }
+
+  double _getRowHeight(TrackRow row) {
+    final baseHeight = switch (row.rowKind) {
+      .automationLane => baseTrackHeight * automationLaneHeightRatio,
+      _ => baseTrackHeight,
+    };
+
+    return calculateTrackHeight(baseHeight, rowHeightModifier(row.rowId));
   }
 
   void applyVerticalScrollDelta(double pixelDelta) {
@@ -383,11 +357,13 @@ abstract class _ArrangerViewModel with Store {
   void registerTrack(Id trackId) {
     trackHeightModifiers[trackId] = 1;
     automationExpandedByTrackId[trackId] = false;
+    groupExpandedByTrackId[trackId] = true;
   }
 
   void unregisterTrack(Id trackId) {
     trackHeightModifiers.remove(trackId);
     automationExpandedByTrackId.remove(trackId);
+    groupExpandedByTrackId.remove(trackId);
     final phantomLaneId = _phantomAutomationLaneIdByParentTrackId.remove(
       trackId,
     );
@@ -404,6 +380,12 @@ abstract class _ArrangerViewModel with Store {
 
   void resetRowHeightModifier(Id rowId) {
     setRowHeightModifier(rowId, 1);
+  }
+
+  bool isGroupExpanded(Id trackId) => groupExpandedByTrackId[trackId] ?? true;
+
+  void setGroupExpanded(Id trackId, bool expanded) {
+    groupExpandedByTrackId[trackId] = expanded;
   }
 
   Id _phantomAutomationLaneIdForTrack(Id trackId) {
@@ -469,52 +451,26 @@ abstract class _ArrangerViewModel with Store {
     return null;
   }
 
-  int visibleSubtreeRowCount(Id rootTrackId) {
-    var count = 0;
-
-    void countTrack(Id trackId) {
-      final track = project.tracks[trackId];
-      if (track == null) {
-        return;
-      }
-
-      count++;
-
-      if (!track.isAutomationLane &&
-          (automationExpandedByTrackId[track.id] ?? false)) {
-        if (phantomAutomationLaneForTrack(track.id) != null) {
-          count++;
-        }
-
-        count += track.automationLanes.length;
-      }
-
-      for (final childTrackId in track.childTracks) {
-        countTrack(childTrackId);
-      }
-    }
-
-    countTrack(rootTrackId);
-    return count;
-  }
-
-  Iterable<ArrangerRow> getVisibleRows() sync* {
+  Iterable<TrackRow> getVisibleTrackRows() sync* {
     final topLevelTracks = project.trackOrder
         .map((trackId) => (trackId, false))
         .followedBy(project.sendTrackOrder.map((trackId) => (trackId, true)));
 
-    Iterable<ArrangerRow> yieldChildren(
+    Iterable<TrackRow> yieldChildren(
       Id trackId,
       bool isSendTrack,
       int currentDepth,
     ) sync* {
-      yield TrackArrangerRow(
+      final track = project.tracks[trackId];
+      yield ProjectTrackRow(
         trackId: trackId,
+        rowKind: track?.isAutomationLane == true
+            ? TrackRowKind.automationLane
+            : TrackRowKind.track,
         isSendTrack: isSendTrack,
         trackDepth: currentDepth,
       );
 
-      final track = project.tracks[trackId];
       if (track == null) {
         return;
       }
@@ -523,7 +479,7 @@ abstract class _ArrangerViewModel with Store {
           (automationExpandedByTrackId[trackId] ?? false)) {
         final phantomLane = phantomAutomationLaneForTrack(trackId);
         if (phantomLane != null) {
-          yield PhantomAutomationArrangerRow(
+          yield PhantomAutomationTrackRow(
             phantomLane: phantomLane,
             isSendTrack: isSendTrack,
             trackDepth: currentDepth + 1,
@@ -531,218 +487,24 @@ abstract class _ArrangerViewModel with Store {
         }
 
         for (final automationLaneId in track.automationLanes) {
-          yield TrackArrangerRow(
+          yield ProjectTrackRow(
             trackId: automationLaneId,
+            rowKind: TrackRowKind.automationLane,
             isSendTrack: isSendTrack,
             trackDepth: currentDepth + 1,
           );
         }
       }
 
-      for (final childTrackId in track.childTracks) {
-        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      if (track.type != .group || isGroupExpanded(trackId)) {
+        for (final childTrackId in track.childTracks) {
+          yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+        }
       }
     }
 
     for (final topLevelTrack in topLevelTracks) {
       yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
     }
-  }
-}
-
-/// Calculates and caches the size and position of tracks in the current view.
-///
-/// The position of each track is dependent on the height of each track above it
-/// plus the vertical scroll position, and the height of the scrollable area
-/// depends on the height of all tracks.
-///
-/// The arranger uses this to calculate which track headers are on screen and
-/// where they are, and to determine how to render the scrollbar. The clip
-/// renderer uses this to determine the y position and size of each clip.
-///
-/// The values are cached in a typed array to improve memory locality and reduce
-/// allocation and GC pressure.
-@visibleForTesting
-class TrackPositionAndSize {
-  static const _addButtonAreaHeight = 33.0;
-
-  ProjectModel projectModel;
-  ArrangerViewModel arrangerViewModel;
-
-  var _cache = Float64List(0);
-  final _rowIdToIndex = <Id, int>{};
-  final _rowIdToRow = <Id, ArrangerRow>{};
-  final _trackIdToIndex = <Id, int>{};
-  final _trackIndexToId = <int, Id>{};
-  final _rowIndexToRow = <int, ArrangerRow>{};
-  List<ArrangerRow> _visibleRows = const [];
-
-  TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
-
-  final layoutRevision = ValueNotifier<int>(0);
-
-  List<ArrangerRow> get visibleRows => _visibleRows;
-
-  int? tryRowIdToIndex(Id rowId) => _rowIdToIndex[rowId];
-  int rowIdToIndex(Id rowId) => _rowIdToIndex[rowId]!;
-  ArrangerRow? tryRowIdToRow(Id rowId) => _rowIdToRow[rowId];
-  int? tryTrackIdToIndex(Id trackId) => _trackIdToIndex[trackId];
-  int trackIdToIndex(Id trackId) => _trackIdToIndex[trackId]!;
-  Id trackIndexToId(int index) => _trackIndexToId[index]!;
-  Id? tryTrackIndexToId(int index) => _trackIndexToId[index];
-  ArrangerRow rowAtIndex(int index) => _rowIndexToRow[index]!;
-  ({int rowIndex, double fraction, ArrangerRow row})? rowAtPosition(
-    double yPosition, {
-    bool includeBorder = false,
-  }) {
-    for (int i = 0; i < _cache.length ~/ 2; i++) {
-      final trackPosition = _cache[i * 2 + 1];
-      final trackHeight = _cache[i * 2];
-      final trackBottom = trackPosition + trackHeight;
-      // The last pixel is the divider between rows.
-      final hitBottom = includeBorder ? trackBottom : trackBottom - 1;
-
-      if (yPosition >= trackPosition && yPosition < hitBottom) {
-        return (
-          rowIndex: i,
-          fraction: (yPosition - trackPosition) / trackHeight,
-          row: rowAtIndex(i),
-        );
-      }
-    }
-
-    return null;
-  }
-
-  double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
-  double getTrackPosition(num fractionalTrackIndex) =>
-      _cache[fractionalTrackIndex.floor() * 2 + 1] +
-      getTrackHeight(fractionalTrackIndex.floor()) *
-          fractionalTrackIndex.remainder(1.0);
-
-  /// Gets the track index plus a [0 - 1) offset from the top of the track,
-  /// given a y-offset from the top of the screen.
-  double getTrackIndexFromPosition(double yPosition) {
-    final rowHit = rowAtPosition(yPosition);
-    return rowHit == null
-        ? double.infinity
-        : rowHit.rowIndex.toDouble() + rowHit.fraction;
-  }
-
-  /// To be called on build in a LayoutBuilder, as soon as we can know the
-  /// height of the editor and before any further build or render work is done.
-  ///
-  /// This is meant to be used with a MobX observer.
-  ///
-  /// This also clamps the vertical scroll position after recalculating the
-  /// scrollable height, then refreshes track positions again if the clamp
-  /// changed the scroll position.
-  void invalidate(double editorHeight) {
-    arrangerViewModel.editorHeight = editorHeight;
-
-    final visibleRows = arrangerViewModel.getVisibleRows().toList(
-      growable: false,
-    );
-    final previousRows = _visibleRows;
-    final trackCount = visibleRows.length;
-    var layoutChanged = previousRows.length != trackCount;
-
-    if (_cache.length != trackCount * 2) {
-      _cache = Float64List(trackCount * 2);
-    }
-    _rowIdToIndex.clear();
-    _rowIdToRow.clear();
-    _trackIdToIndex.clear();
-    _trackIndexToId.clear();
-    _rowIndexToRow.clear();
-    _visibleRows = visibleRows;
-
-    var totalTrackHeight = 0.0;
-    for (final (i, row) in visibleRows.indexed) {
-      final heightIndex = i * 2;
-      final trackHeight = switch (row) {
-        TrackArrangerRow() ||
-        PhantomAutomationArrangerRow() => calculateTrackHeight(
-          arrangerViewModel.baseTrackHeight,
-          arrangerViewModel.rowHeightModifier(row.rowId),
-        ),
-      };
-      if (!layoutChanged) {
-        layoutChanged =
-            _cache[heightIndex] != trackHeight ||
-            !_sameLayoutRow(previousRows[i], row);
-      }
-      _cache[heightIndex] = trackHeight;
-      _rowIdToIndex[row.rowId] = i;
-      _rowIdToRow[row.rowId] = row;
-      _rowIndexToRow[i] = row;
-      if (row case TrackArrangerRow(:final trackId)) {
-        _trackIdToIndex[trackId] = i;
-        _trackIndexToId[i] = trackId;
-      }
-      totalTrackHeight += trackHeight;
-    }
-
-    final trackGap = max(
-      0.0,
-      editorHeight - (totalTrackHeight + _addButtonAreaHeight) + 1,
-    );
-
-    if (!layoutChanged) {
-      layoutChanged = arrangerViewModel.regularToSendGapHeight != trackGap;
-    }
-
-    arrangerViewModel.regularToSendGapHeight = trackGap;
-
-    arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
-      visibleRows,
-      trackGap,
-    );
-
-    final clampedVerticalScrollPosition = arrangerViewModel
-        .verticalScrollPosition
-        .clamp(0.0, arrangerViewModel.maxVerticalScrollPosition);
-
-    if (clampedVerticalScrollPosition !=
-        arrangerViewModel.verticalScrollPosition) {
-      arrangerViewModel.verticalScrollPosition = clampedVerticalScrollPosition;
-      arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
-        visibleRows,
-        trackGap,
-      );
-    }
-
-    if (layoutChanged) {
-      layoutRevision.value++;
-    }
-  }
-
-  bool _sameLayoutRow(ArrangerRow previousRow, ArrangerRow nextRow) {
-    return previousRow.rowId == nextRow.rowId &&
-        previousRow.isSendTrack == nextRow.isSendTrack &&
-        previousRow.trackDepth == nextRow.trackDepth;
-  }
-
-  double _updateCachedTrackPositions(
-    Iterable<ArrangerRow> allRows,
-    double trackGap,
-  ) {
-    var lastWasSendTrack = false;
-    var positionPointer = -arrangerViewModel.verticalScrollPosition;
-
-    for (final (i, row) in allRows.indexed) {
-      final heightIndex = i * 2;
-      final positionIndex = heightIndex + 1;
-
-      if (row.isSendTrack && !lastWasSendTrack) {
-        lastWasSendTrack = true;
-        positionPointer += trackGap + _addButtonAreaHeight;
-      }
-
-      _cache[positionIndex] = positionPointer;
-      positionPointer += _cache[heightIndex];
-    }
-
-    return positionPointer + arrangerViewModel.verticalScrollPosition - 1;
   }
 }

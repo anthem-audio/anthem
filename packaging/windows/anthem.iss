@@ -2,8 +2,8 @@
 #define MyArch "x64"
 #endif
 
-#define MyAppVersion "0.0.0-prealpha.1"
-#define MyAppVersionNumeric "0.0.0.1"
+#define MyAppVersion "0.0.0-prealpha.2"
+#define MyAppVersionNumeric "0.0.0.2"
 
 [Setup]
 AppId={{7C9E4F2A-3B6D-4E8C-9A1F-5D7E3B2C8A4F}

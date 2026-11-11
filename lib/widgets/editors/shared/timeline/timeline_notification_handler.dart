@@ -30,7 +30,6 @@ import 'package:provider/provider.dart';
 class TimelineNotificationHandler extends StatefulWidget {
   final TimelineKind timelineKind;
   final Id? patternID;
-  final Id? arrangementID;
   final Widget child;
 
   const TimelineNotificationHandler({
@@ -38,7 +37,6 @@ class TimelineNotificationHandler extends StatefulWidget {
     required this.child,
     required this.timelineKind,
     this.patternID,
-    this.arrangementID,
   });
 
   @override
@@ -59,11 +57,7 @@ class _TimelineNotificationHandlerState
       TimelineKind.pattern =>
         project.sequence.patterns[widget.patternID]?.timeSignatureChanges ?? [],
       TimelineKind.arrangement =>
-        project
-                .sequence
-                .arrangements[widget.arrangementID]
-                ?.timeSignatureChanges ??
-            [],
+        project.sequence.arrangement.timeSignatureChanges,
     };
   }
 
@@ -107,7 +101,6 @@ class _TimelineNotificationHandlerState
                 project: project,
                 timelineKind: widget.timelineKind,
                 patternID: widget.patternID,
-                arrangementID: widget.arrangementID,
                 changeID: notification.labelID,
                 newOffset: snappedPos + snapOffset,
               ),
@@ -119,7 +112,6 @@ class _TimelineNotificationHandlerState
                 project: project,
                 timelineKind: widget.timelineKind,
                 patternID: widget.patternID,
-                arrangementID: widget.arrangementID,
                 changeID: notification.labelID,
                 oldOffset: startTime.floor(),
                 newOffset: snappedPos + snapOffset,

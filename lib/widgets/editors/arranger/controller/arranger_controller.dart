@@ -152,6 +152,28 @@ abstract class _ArrangerController {
     stateMachine.onTrackLayoutChanged();
   }
 
+  void _refreshTrackLayoutAfterVisibilityChanged() {
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
+    onTrackLayoutChanged();
+  }
+
+  void toggleTrackAutomationExpanded(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null || track.isAutomationLane) return;
+
+    viewModel.automationExpandedByTrackId[trackId] =
+        !(viewModel.automationExpandedByTrackId[trackId] ?? false);
+    _refreshTrackLayoutAfterVisibilityChanged();
+  }
+
+  void toggleTrackGroupExpanded(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track?.type != TrackType.group) return;
+
+    viewModel.setGroupExpanded(trackId, !viewModel.isGroupExpanded(trackId));
+    _refreshTrackLayoutAfterVisibilityChanged();
+  }
+
   void _handleParameterTouched(
     ModelChangeEvent _,
     ModelChangeBindings bindings,
@@ -290,8 +312,7 @@ abstract class _ArrangerController {
     project.execute(command);
 
     viewModel.automationExpandedByTrackId[target.ownerTrackId] = true;
-    viewModel.refreshTrackLayout(viewModel.editorHeight);
-    onTrackLayoutChanged();
+    _refreshTrackLayoutAfterVisibilityChanged();
 
     return command.lane.id;
   }
@@ -328,8 +349,7 @@ abstract class _ArrangerController {
     double? width,
     String? patternName,
   }) {
-    final arrangementId = project.sequence.activeArrangementID!;
-    final arrangement = project.sequence.arrangements[arrangementId]!;
+    final arrangement = project.sequence.arrangement;
     final clipOffset = offset.round();
     final pattern = PatternModel(
       idAllocator: _idAllocator,
@@ -357,9 +377,7 @@ abstract class _ArrangerController {
     );
 
     project.execute(PatternAddRemoveCommand.add(pattern: pattern));
-    project.execute(
-      ClipAddRemoveCommand.add(arrangementID: arrangementId, clip: clip),
-    );
+    project.execute(ClipAddRemoveCommand.add(clip: clip));
 
     return pattern.id;
   }
@@ -471,22 +489,11 @@ abstract class _ArrangerController {
   }
 
   ArrangementModel? get _activeArrangementOrNull {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
-      return null;
-    }
-
-    return project.sequence.arrangements[arrangementId];
+    return project.sequence.arrangement;
   }
 
   bool openClipInEditor(Id clipId) {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
-      return false;
-    }
-
-    final arrangement = project.sequence.arrangements[arrangementId];
-    final clip = arrangement?.clips[clipId];
+    final clip = project.sequence.arrangement.clips[clipId];
     if (clip == null) {
       return false;
     }
@@ -497,9 +504,8 @@ abstract class _ArrangerController {
     }
 
     if (track.isAutomationLane) {
-      ServiceRegistry.forProject(
-        project.id,
-      ).trackController.setActiveTrack(track.id);
+      ServiceRegistry.forProject(project.id).trackController
+          .setActiveTrack(track.id);
       return false;
     }
 
@@ -508,19 +514,10 @@ abstract class _ArrangerController {
   }
 
   void deleteClips(Iterable<Id> clipIds) {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
-      return;
-    }
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
 
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
-
-    final deletionResult = trackController.deleteClips(
-      arrangementId: arrangementId,
-      clipIds: clipIds,
-    );
+    final deletionResult = trackController.deleteClips(clipIds: clipIds);
 
     viewModel.selectedClips.removeAll(deletionResult.deletedClipIds);
   }
@@ -592,9 +589,8 @@ abstract class _ArrangerController {
   }
 
   int? _playbackStartPasteAnchorOffset() {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null ||
-        project.sequence.activeTransportSequenceID != arrangementId) {
+    final arrangementSequenceId = project.sequence.arrangement.id;
+    if (project.sequence.activeTransportSequenceID != arrangementSequenceId) {
       return null;
     }
 
@@ -662,9 +658,7 @@ abstract class _ArrangerController {
       project.execute(PatternAddRemoveCommand.add(pattern: pattern));
     }
     for (final clip in clips) {
-      project.execute(
-        ClipAddRemoveCommand.add(arrangementID: arrangement.id, clip: clip),
-      );
+      project.execute(ClipAddRemoveCommand.add(clip: clip));
     }
     project.commitUndoGroup();
 
@@ -674,10 +668,7 @@ abstract class _ArrangerController {
   }
 
   void selectAllClips() {
-    if (project.sequence.activeArrangementID == null) return;
-
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final arrangement = project.sequence.arrangement;
 
     viewModel.selectedClips.clear();
 
@@ -713,11 +704,8 @@ abstract class _ArrangerController {
       return;
     }
 
-    final arrangementId = project.sequence.activeArrangementID;
-    final arrangement = arrangementId == null
-        ? null
-        : project.sequence.arrangements[arrangementId];
-    if (arrangement == null || viewModel.selectedClips.isEmpty) {
+    final arrangement = project.sequence.arrangement;
+    if (viewModel.selectedClips.isEmpty) {
       return;
     }
 
@@ -747,7 +735,6 @@ abstract class _ArrangerController {
 
     project.execute(
       MoveClipsCommand(
-        arrangementID: arrangement.id,
         clipMoves: selectedClips
             .map((clip) {
               return (
@@ -776,6 +763,17 @@ abstract class _ArrangerController {
         minPixelsPerSection: 0,
       ),
     );
+  }
+
+  void selectTrackFromClick(Id trackId) {
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isShiftPressed) {
+      shiftClickToTrack(trackId);
+    } else if (isPrimaryModifierPressed(keyboard)) {
+      toggleTrackSelection(trackId);
+    } else {
+      selectTrack(trackId);
+    }
   }
 
   void selectTrack(Id trackId) {
@@ -809,10 +807,6 @@ abstract class _ArrangerController {
     final project = _project;
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final trackController = serviceRegistry.trackController;
-
-    if (project.sequence.activeArrangementID == null) {
-      return;
-    }
 
     final currentTrackList = trackController
         .getTracksIterable()
@@ -919,24 +913,16 @@ abstract class _ArrangerController {
     serviceRegistry.projectController.openPatternInPianoRoll(patternId);
   }
 
-  /// Adds a time signature change to the active arrangement.
+  /// Adds a time signature change to the arrangement.
   void addTimeSignatureChange({
     required TimeSignatureModel timeSignature,
     required Time offset,
     bool snap = true,
   }) {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
-      return;
-    }
+    final arrangement = project.sequence.arrangement;
 
     var snappedOffset = offset;
     if (snap) {
-      final arrangement = project.sequence.arrangements[arrangementId];
-      if (arrangement == null) {
-        return;
-      }
-
       final divisionChanges = getDivisionChanges(
         viewWidthInPixels: max(stateMachine.data.viewSize.width, 1),
         snap: AutoSnap(),
@@ -957,7 +943,6 @@ abstract class _ArrangerController {
     project.execute(
       AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.arrangement,
-        arrangementID: arrangementId,
         change: TimeSignatureChangeModel(
           idAllocator: _idAllocator,
           offset: snappedOffset,

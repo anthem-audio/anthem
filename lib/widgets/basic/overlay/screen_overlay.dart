@@ -51,6 +51,13 @@ class _ScreenOverlayState extends State<ScreenOverlay> {
   }
 
   @override
+  void dispose() {
+    ServiceRegistry.detachScreenOverlay(controller);
+    controller.clear();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final stackChildren =
         <Widget>[Positioned.fill(child: widget.child)] +

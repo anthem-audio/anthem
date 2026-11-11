@@ -1,16 +1,165 @@
 # Communication Between UI and Engine
 
-Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Messages use a request–response pattern with unique IDs, so a “request” (from UI to engine) pairs with a matching “response” (from engine to UI), though some requests have no response and some responses come through as unsolicited events.
+Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Most operations begin with a UI request and receive an engine reply with the same ID. Some messages need no reply, and the engine also sends unsolicited events. The engine can also request UI services through the same connection.
 
 The messages are defined as classes in Dart. Anthem’s code generator inspects these Dart classes to automatically generate the corresponding C++ structs and serialization code, ensuring type-safe, two-way data flow from a single source of truth and with minimal boilerplate.
 
 The example below walks through adding a new request and response to show how Anthem's IPC system works.
 
-## Adding a new request and response
+## Visualization transport
 
-`messages.dart` in `lib/engine_api/messages` contains base `Request` and `Response` classes. Note that these names merely indicate the direction of the message flow, in that requests are always sent from the UI to the engine and responses are always sent from the engine to the UI. Some requests do not expect a response, and some responses are unprompted.
+Commands, replies, subscription changes, and update-interval requests remain on
+the reliable JSON channel (TCP on desktop, the existing byte rings on web).
+Visualization batches use a separate bounded SPSC record ring. Its single writer
+is the JUCE message thread, and its single reader is the Dart UI isolate.
+Encoding and publishing never happen on the audio thread.
 
-Messages are defined as subclasses of either `Request` or `Response`. Since both base classes are sealed, the sub-classes must be in a `part` file - you can see examples of these at the top of `messages.dart`:
+`Engine` owns a `VisualizationComms` instance, which encapsulates the channel's
+storage, ring endpoints, and platform-specific initialization. The
+`VisualizationBroker` manages providers and subscriptions, and its record
+publisher handles encoding and batching. The broker borrows the writer from
+`VisualizationComms`; the web entry points borrow its reader. The endpoints are
+destroyed before their backing storage when the engine is destroyed.
+
+The desktop UI initializes a shared-memory mapping before starting the engine.
+The engine attaches its writer and reports initialization errors through the
+existing ready-check handshake. The UI unlinks the mapping's identifier after
+that handshake and retains its mapping until the reader is closed. Web uses the
+same C++ ring implementation in shared WebAssembly memory; exported functions
+perform acquire/release and expose queue occupancy. Both allocate 16 MiB of usable
+data plus 128 bytes of cursor storage. Usable ring capacity is a power of two so
+32-bit cursor rollover preserves physical offsets.
+
+### Record format, version 1
+
+All numbers are little-endian. Fields are encoded individually, without C++
+struct padding. Each record has this 40-byte header:
+
+| Offset | Field | Encoding |
+| --- | --- | --- |
+| 0 | Magic, `AIV1` | uint32, `0x31564941` |
+| 4 | Format version | uint32, `1` |
+| 8 | Publication attempt sequence | uint32, wrapping |
+| 12 | Audio processing configuration generation | uint64 |
+| 20 | Sample rate | IEEE 754 float64 |
+| 28 | Newest sample timestamp in this batch | int64 |
+| 36 | Item count | uint32 |
+
+Each item begins with three uint32 fields: UTF-8 ID byte length, value type
+(0 = double, 1 = integer), and sample count, followed by the ID bytes. The former
+string value type (2) is unsupported; subscription IDs remain UTF-8 strings.
+Each sample occupies 16 bytes: an int64 timestamp followed by a float64 or int64
+value. Timestamps use the engine's sample counter, are nonnegative, and are
+ordered within each item. The numeric encodings and type IDs are unchanged.
+
+Records are limited to 1 MiB, IDs to 4096 bytes, and each item to 2048 samples.
+Sample rates must be finite, positive, and at most 1 MHz. JavaScript Dart rejects
+integers outside its exact 53-bit range; native and WebAssembly Dart use 64-bit
+integer accessors.
+The decoder validates counts, bounds, value types, UTF-8, timestamp ordering,
+duplicate IDs, and trailing bytes. Incompatible or malformed records stop the
+connector rather than letting it continue with an uninterpretable transport.
+The common fixture in `test/fixtures/visualization_record_v1.hex` verifies the
+C++ encoder and Dart decoder against the same bytes.
+
+### Freshness and ownership
+
+A full ring rejects the entire new record without blocking or modifying the
+reader cursor. The publisher retains one coalesced pending update, merges newer
+values, trims history to the most recent 250 ms (retaining the final value of slow
+streams), and retries even when providers have no new data. If a batch exceeds
+the record limit, it retains numeric peaks and final values before dropping
+items that still cannot fit. Provider replacement, subscription changes, audio
+configuration changes, and render suppression discard pending state.
+
+Dart polls the desktop ring every 8 ms. Web polls on Flutter frames, with a timer
+fallback when frames are absent. Each pass has a 256-record / 2 ms budget, with
+a yielded continuation when necessary; a single decode is bounded by the record
+size limit. A record is decoded into owned Dart values before release, including
+on errors. Ring-backed views must never escape acquisition into subscriptions.
+The web reader obtains the current Emscripten heap for each acquisition, so heap
+growth does not reuse a stale view.
+
+The consumer coalesces recent samples before notifying the visualization
+provider. It detects sequence gaps, session changes, and pauses longer than
+250 ms. On recovery, timing estimates and old adaptive history are reset, while
+UI overrides and slowly changing unbuffered latest values survive. Adaptive
+render cursors also fast-forward if they fall more than 250 ms beyond their
+target delay behind the newest sample. Ordinary jitter still uses adaptive
+buffering, and meter peaks in the retained history remain available.
+
+Publisher counters track published records, rejected writes, and oversized
+updates. Consumer counters track records/bytes read, skipped records/samples,
+discontinuities, queue byte high-water, and maximum drain duration. These are
+available for debugger inspection without per-message logging. Publish intervals
+are validated and capped at 240 Hz; the UI requests the refresh rate of its own
+display. Stop, startup cancellation, process exit, and disposal close the reader
+before releasing storage and cancel poll continuations, timers, and web tickers.
+
+These changes affect runtime IPC only and do not change project files.
+
+### Transport verification
+
+Engine unit tests cover cursor rollover, concurrent access, full-ring retry,
+provider removal, and peak retention when compacting oversized records. Native
+IPC package tests also exercise a child process and reader/mapping cleanup. The
+desktop engine integration test sends the common fixture through the actual
+writer and restarts the process with the same engine ID, without an audio device.
+
+The web CI job tests the browser reader and decoder with both Dart compilers:
+
+```bash
+dart run anthem:cli flutter_test --web
+```
+
+The browser tests cover zero-copy acquisition, release on invalid views, heap
+replacement, disposal, and owned decoded values. Dart transport tests cover
+malformed records, bounded burst draining, recent peaks, sequence rollover,
+pauses, and audio generation changes.
+
+See [Testing](../testing.md) for browser suite selection and widget test coverage.
+
+## Message types
+
+JSON messages derive from `IpcMessage` and have one of three roles, regardless of which side sends them:
+
+- `Request` asks the receiver to perform an operation.
+- `Response` replies to a request using the same ID.
+- `IpcEvent` reports an event without a request ID or an expected reply.
+
+Each side allocates IDs for its own requests and matches incoming responses against those requests. Requests in opposite directions can therefore have the same ID without ambiguity.
+
+On the UI side, `Engine` manages request scheduling and response matching. Connectors handle message encoding and transport, while application handlers perform the requested work and process events.
+
+## Engine lifecycle
+
+`Engine` owns the lifecycle state machine: `stopped → starting → running → stopping → stopped`. Shutdown, connection loss, and startup failure enter `stopping`, which rejects ordinary requests and fails pending and queued requests. `stopped` means connection and process cleanup has finished; a restart waits for that cleanup.
+
+Asynchronous UI operations can use `sessionEnded` to cancel work when their engine session enters `stopping`. Each startup creates a separate session, so work from an earlier session cannot send replies to a replacement engine.
+
+## Requests made by the engine
+
+Engine requests allow the engine to use services owned by the UI over the same JSON channel. The asset store uses this channel to grant read and write access. The UI owns the store, while the engine reads and writes granted paths directly. File contents stay out of these storage messages.
+
+The engine sends requests through `Engine::uiRequests`. To add an operation, define its `Request` and `Response` in the messages library and regenerate code, as in the example below. Add a case to [`ProjectEngineRequestHandler`](../../lib/logic/project_engine_request_handler.dart) to forward the request to the relevant application module.
+
+Engine requests and their completion callbacks run on the JUCE message thread and must not be used from the audio thread. They are asynchronous: blocking while waiting for a UI response would prevent the engine from processing that response or handling nested requests.
+
+UI replies bypass startup and render request queues. An engine operation may need a UI service before initialization or rendering can finish, so queuing its reply could deadlock that operation. Replies belong to the session that received the request and are discarded once it ends.
+
+Timeouts and request cancellation stop the engine from waiting for a reply; they do not cancel the UI operation. Session shutdown is a separate signal that UI handlers can use to cancel their work.
+
+The UI and engine use the same asset store API. File scopes group read, write, and retention tokens for cleanup. The UI calls the store directly, and the engine request handler forwards IPC operations using a file scope owned by that engine session. Engine cleanup closes its file scope after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other scopes survive engine restarts.
+
+Engine storage requests dispatch to an `AssetScope` owned by the engine session.
+The same scope API serves local Dart clients; C++ remains an asynchronous client
+of the authoritative UI store. See [Project File Storage](./project_storage.md).
+
+## Adding a UI-to-engine request and response
+
+The following example adds an operation handled by the engine.
+
+Define the operation's messages as subclasses of `Request` and `Response`. Since both base classes are sealed, the sub-classes must be in a `part` file - you can see examples of these at the top of `messages.dart`:
 
 ```dart
 part 'model_sync.dart';
@@ -28,9 +177,7 @@ part of 'messages.dart';
 
 class AddRequest extends Request {
   /// This named constructor must be present, as the code generator uses this
-  /// during deserialization. However, we won't ever deserialize this class
-  /// since it's a request. See below for more information on how this is used
-  /// in the response case.
+  /// during deserialization on the receiving side.
   AddRequest.uninitialized();
 
   /// This is an ordinary constructor, which we will use to create instances of
@@ -64,11 +211,8 @@ class AddResponse extends Response {
   /// call this constructor, and then set the fields on the object that is
   /// created.
   ///
-  /// The deserializer will not write to nullable fields if the incoming JSON
-  /// does not contain a value for that field. In that case, this constructor
-  /// should set the field to null. However, in all other cases, the initial
-  /// value of the field does not matter, as it will be overwritten by the
-  /// deserializer.
+  /// Fields are populated from the JSON after construction. Missing nullable
+  /// fields are set to null.
   AddResponse.uninitialized();
 
   AddResponse({required int id, required this.result}) {

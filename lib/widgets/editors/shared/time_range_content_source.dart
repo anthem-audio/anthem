@@ -46,13 +46,7 @@ class TimeRangeContentBounds {
   double get width => end - start;
 }
 
-enum _TimeRangeContentSourceKind {
-  fixed,
-  activePattern,
-  pattern,
-  activeArrangement,
-  arrangement,
-}
+enum _TimeRangeContentSourceKind { fixed, activePattern, pattern, arrangement }
 
 class TimeRangeContentSource {
   final _TimeRangeContentSourceKind _kind;
@@ -93,22 +87,12 @@ class TimeRangeContentSource {
        _fixedStart = 0,
        _fixedEnd = null;
 
-  const TimeRangeContentSource.activeArrangement({
-    this.fallbackBars = _defaultArrangementFallbackBars,
-    this.minWidth = _defaultMinWidth,
-    this.endOverscrollFraction = _defaultEndOverscrollFraction,
-  }) : _kind = _TimeRangeContentSourceKind.activeArrangement,
-       _sequenceId = null,
-       _fixedStart = 0,
-       _fixedEnd = null;
-
-  const TimeRangeContentSource.arrangement(
-    Id? arrangementId, {
+  const TimeRangeContentSource.arrangement({
     this.fallbackBars = _defaultArrangementFallbackBars,
     this.minWidth = _defaultMinWidth,
     this.endOverscrollFraction = _defaultEndOverscrollFraction,
   }) : _kind = _TimeRangeContentSourceKind.arrangement,
-       _sequenceId = arrangementId,
+       _sequenceId = null,
        _fixedStart = 0,
        _fixedEnd = null;
 
@@ -139,13 +123,8 @@ class TimeRangeContentSource {
         project,
         _sequenceId,
       ),
-      _TimeRangeContentSourceKind.activeArrangement => _resolveArrangementEnd(
-        project,
-        project.sequence.activeArrangementID,
-      ),
       _TimeRangeContentSourceKind.arrangement => _resolveArrangementEnd(
         project,
-        _sequenceId,
       ),
       _TimeRangeContentSourceKind.fixed => throw StateError(
         'Fixed TimeRangeContentSource should have returned before switch.',
@@ -167,12 +146,10 @@ class TimeRangeContentSource {
     return pattern?.lastContent.toDouble() ?? fallbackEnd;
   }
 
-  double _resolveArrangementEnd(ProjectModel project, Id? arrangementId) {
-    final arrangement = project.sequence.arrangements[arrangementId];
-    final fallbackEnd = (project.sequence.ticksPerQuarter * 4 * fallbackBars)
-        .toDouble();
+  double _resolveArrangementEnd(ProjectModel project) {
+    final arrangement = project.sequence.arrangement;
 
-    return arrangement?.viewWidth.toDouble() ?? fallbackEnd;
+    return arrangement.viewWidth.toDouble();
   }
 }
 

@@ -61,10 +61,14 @@ class SequencerTest : public juce::UnitTest {
         .patterns = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
-        .arrangements =
-            std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
-        .arrangementOrder = std::make_shared<ModelVector<int64_t>>(),
-        .activeArrangementID = std::nullopt,
+        .arrangement = std::make_shared<ArrangementModel>(ArrangementModelImpl{
+            .id = 1,
+            .name = "Arrangement",
+            .clips = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<ClipModel>>>(),
+            .timeSignatureChanges =
+                std::make_shared<ModelVector<std::shared_ptr<TimeSignatureChangeModel>>>(),
+            .loopPoints = std::nullopt,
+        }),
         .activeTransportSequenceID = std::nullopt,
         .defaultTimeSignature = defaultTimeSignature,
         .playbackStartPosition = restoredPlayheadPosition,

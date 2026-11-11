@@ -52,5 +52,5 @@ modules:
         branch: automation
       - type: git
         url: https://github.com/flutter/flutter.git
-        tag: 3.44.3
+        tag: 3.47.6
         dest: flutter

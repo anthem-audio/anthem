@@ -21,9 +21,13 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/arranger_track_headers_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/automation_curve_bounds_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/settings_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/parameter_baselines_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/menu_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
@@ -56,6 +60,16 @@ enum WidgetTestScreenId {
     title: 'Dialog',
     description: 'Tests for lib/widgets/basic/dialog',
   ),
+  settings(
+    key: 'widget-test-screen-settings',
+    title: 'Settings',
+    description: 'Application settings dialog',
+  ),
+  settingsCustom(
+    key: 'widget-test-screen-settings-custom',
+    title: 'Settings — custom folder',
+    description: 'Application settings with a custom projects folder',
+  ),
   meter(
     key: 'widget-test-screen-meter',
     title: 'Meter',
@@ -66,10 +80,26 @@ enum WidgetTestScreenId {
     title: 'Knob',
     description: 'Tests for lib/widgets/basic/controls/knob.dart',
   ),
+  parameterBaselines(
+    key: 'widget-test-screen-parameter-baselines',
+    title: 'Parameter baselines',
+    description:
+        'Compares knob arcs and automation fills at different baselines',
+  ),
   slider(
     key: 'widget-test-screen-slider',
     title: 'Slider',
     description: 'Tests for lib/widgets/basic/controls/slider.dart',
+  ),
+  arrangerTrackHeaders(
+    key: 'widget-test-screen-arranger-track-headers',
+    title: 'Arranger track headers',
+    description: 'Tests calculated header, indicator, and divider layout',
+  ),
+  automationCurveBounds(
+    key: 'widget-test-screen-automation-curve-bounds',
+    title: 'Automation curve bounds',
+    description: 'Reproduces asymmetric clipping at opposite tension extremes',
   );
 
   final String key;
@@ -173,6 +203,19 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.settings.key,
+            label: labelForScreen(WidgetTestScreenId.settings),
+            onClick: () =>
+                setState(() => selectedScreen = WidgetTestScreenId.settings),
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.settingsCustom.key,
+            label: labelForScreen(WidgetTestScreenId.settingsCustom),
+            onClick: () => setState(
+              () => selectedScreen = WidgetTestScreenId.settingsCustom,
+            ),
+          ),
+          TreeViewItemModel(
             key: 'widget-test-category-basic-controls',
             label: 'Controls',
             children: [
@@ -182,6 +225,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
                 onClick: () {
                   setState(() {
                     selectedScreen = WidgetTestScreenId.knob;
+                  });
+                },
+              ),
+              TreeViewItemModel(
+                key: WidgetTestScreenId.parameterBaselines.key,
+                label: labelForScreen(WidgetTestScreenId.parameterBaselines),
+                onClick: () {
+                  setState(() {
+                    selectedScreen = WidgetTestScreenId.parameterBaselines;
                   });
                 },
               ),
@@ -198,6 +250,30 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
           ),
         ],
       ),
+      TreeViewItemModel(
+        key: 'widget-test-category-editors',
+        label: 'Editors',
+        children: [
+          TreeViewItemModel(
+            key: WidgetTestScreenId.automationCurveBounds.key,
+            label: labelForScreen(WidgetTestScreenId.automationCurveBounds),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.automationCurveBounds;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.arrangerTrackHeaders.key,
+            label: labelForScreen(WidgetTestScreenId.arrangerTrackHeaders),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.arrangerTrackHeaders;
+              });
+            },
+          ),
+        ],
+      ),
     ];
   }
 
@@ -208,9 +284,20 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
       WidgetTestScreenId.radioButton => const RadioButtonWidgetTestScreen(),
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
+      WidgetTestScreenId.settings => const SettingsWidgetTestScreen(),
+      WidgetTestScreenId.settingsCustom => const SettingsWidgetTestScreen(
+        key: ValueKey('custom-settings-preview'),
+        custom: true,
+      ),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
+      WidgetTestScreenId.parameterBaselines =>
+        const ParameterBaselinesWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
+      WidgetTestScreenId.arrangerTrackHeaders =>
+        const ArrangerTrackHeadersWidgetTestScreen(),
+      WidgetTestScreenId.automationCurveBounds =>
+        const AutomationCurveBoundsWidgetTestScreen(),
     };
   }
 

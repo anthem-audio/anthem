@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -42,10 +42,9 @@ class ModelSyncApi {
     final request = ModelInitRequest(id: id, serializedModel: serializedModel);
 
     return (await _engine._request(
-          request,
-          startupBehavior: StartupSendBehavior.queueDuringStartup,
-        ))
-        as ModelInitResponse;
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    )) as ModelInitResponse;
   }
 
   /// Updates the engine model with the given field update.
@@ -74,12 +73,14 @@ class ModelSyncApi {
   /// This is not used for syncing the model - model state only ever flows from
   /// UI to engine - but it can be useful for debugging purposes, and is used in
   /// the engine integration tests.
-  Future<String> debugGetEngineJson() async {
+  Future<String> debugGetEngineJson({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     final id = _engine._getRequestId();
 
     final request = GetSerializedModelFromEngineRequest(id: id);
 
-    final response = await _engine._request(request);
+    final response = await _engine._request(request, timeout: timeout);
 
     return (response as GetSerializedModelFromEngineResponse).serializedModel;
   }

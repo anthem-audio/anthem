@@ -170,6 +170,7 @@ class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
     super.parameterDefaultValue,
     super.parameterDisplayMode,
     super.parameterUnitLabel,
+    super.parameterNormalizedVisualBaseline,
   });
 
   factory ProcessingGraphPortConfiguration.fromJson(
@@ -184,6 +185,7 @@ abstract class _ProcessingGraphPortConfiguration {
   double? parameterDefaultValue;
   String? parameterDisplayMode;
   String? parameterUnitLabel;
+  double? parameterNormalizedVisualBaseline;
 
   _ProcessingGraphPortConfiguration({
     required this.id,
@@ -192,6 +194,7 @@ abstract class _ProcessingGraphPortConfiguration {
     this.parameterDefaultValue,
     this.parameterDisplayMode,
     this.parameterUnitLabel,
+    this.parameterNormalizedVisualBaseline,
   });
 }
 
@@ -218,131 +221,145 @@ class PublishProcessingGraphResponse extends Response {
   }
 }
 
-class PluginChangedEvent extends Response {
+/// An unsolicited event about a processing graph node's processor.
+sealed class ProcessorEvent extends IpcEvent {
   late Id nodeId;
 
+  ProcessorEvent.uninitialized();
+
+  ProcessorEvent({required this.nodeId});
+}
+
+class PluginChangedEvent extends ProcessorEvent {
   late bool latencyChanged;
   late bool parameterInfoChanged;
   late bool programChanged;
   late bool nonParameterStateChanged;
 
-  PluginChangedEvent.uninitialized();
+  PluginChangedEvent.uninitialized() : super.uninitialized();
 
   PluginChangedEvent({
-    required int id,
-    required this.nodeId,
+    required super.nodeId,
     required this.latencyChanged,
     required this.parameterInfoChanged,
     required this.programChanged,
     required this.nonParameterStateChanged,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class PluginParameterChangedEvent extends Response {
-  late Id nodeId;
+class ProcessorParameterChangedEvent extends ProcessorEvent {
   late int controlPortId;
   late double value;
   String? displayText;
 
-  PluginParameterChangedEvent.uninitialized();
+  ProcessorParameterChangedEvent.uninitialized() : super.uninitialized();
 
-  PluginParameterChangedEvent({
-    required int id,
-    required this.nodeId,
+  ProcessorParameterChangedEvent({
+    required super.nodeId,
     required this.controlPortId,
     required this.value,
     this.displayText,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class PluginParameterGestureEvent extends Response {
-  late Id nodeId;
+class ProcessorParameterGestureEvent extends ProcessorEvent {
   late int controlPortId;
   late bool isStarting;
+  late double value;
+  String? displayText;
 
-  PluginParameterGestureEvent.uninitialized();
+  ProcessorParameterGestureEvent.uninitialized() : super.uninitialized();
 
-  PluginParameterGestureEvent({
-    required int id,
-    required this.nodeId,
+  ProcessorParameterGestureEvent({
+    required super.nodeId,
     required this.controlPortId,
     required this.isStarting,
-  }) {
-    super.id = id;
-  }
+    required this.value,
+    this.displayText,
+  });
 }
 
-class PluginParameterSnapshotEvent extends Response {
-  late Id nodeId;
+class ProcessorParameterSnapshotEvent extends ProcessorEvent {
   late List<ProcessingGraphParameterValue> parameterValues;
 
-  PluginParameterSnapshotEvent.uninitialized() : parameterValues = [];
+  ProcessorParameterSnapshotEvent.uninitialized()
+    : parameterValues = [],
+      super.uninitialized();
 
-  PluginParameterSnapshotEvent({
-    required int id,
-    required this.nodeId,
+  ProcessorParameterSnapshotEvent({
+    required super.nodeId,
     required this.parameterValues,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class GetPluginStateRequest extends Request {
+/// Restores the UI cache after callback notifications could not be retained.
+/// Any unfinished parameter gestures for this node must be discarded.
+class ProcessorParameterResyncEvent extends ProcessorEvent {
+  late List<ProcessingGraphParameterValue> parameterValues;
+
+  ProcessorParameterResyncEvent.uninitialized()
+    : parameterValues = [],
+      super.uninitialized();
+
+  ProcessorParameterResyncEvent({
+    required super.nodeId,
+    required this.parameterValues,
+  });
+}
+
+class CaptureProcessorStateRequest extends Request {
   late Id nodeId;
 
-  GetPluginStateRequest.uninitialized();
+  CaptureProcessorStateRequest.uninitialized();
 
-  GetPluginStateRequest({required int id, required this.nodeId}) {
+  CaptureProcessorStateRequest({required int id, required this.nodeId}) {
     super.id = id;
   }
 }
 
-class GetPluginStateResponse extends Response {
-  late String state;
-  late bool isValid;
+/// Returns a processor snapshot asset path without transferring its contents.
+class CaptureProcessorStateResponse extends Response {
+  String? relativePath;
+  String? error;
 
-  GetPluginStateResponse.uninitialized();
+  CaptureProcessorStateResponse.uninitialized();
 
-  GetPluginStateResponse({
+  CaptureProcessorStateResponse({
     required int id,
-    required this.state,
-    required this.isValid,
+    required this.relativePath,
+    required this.error,
   }) {
     super.id = id;
   }
 }
 
-class SetPluginStateRequest extends Request {
-  late Id nodeId;
-  late String state;
-
-  SetPluginStateRequest.uninitialized();
-
-  SetPluginStateRequest({
-    required int id,
-    required this.nodeId,
-    required this.state,
-  }) {
-    super.id = id;
-  }
-}
-
-class SetPluginParameterValueRequest extends Request {
+class SetProcessorParameterValueRequest extends Request {
   late Id nodeId;
   late int controlPortId;
   late double value;
 
-  SetPluginParameterValueRequest.uninitialized();
+  SetProcessorParameterValueRequest.uninitialized();
 
-  SetPluginParameterValueRequest({
+  SetProcessorParameterValueRequest({
     required int id,
     required this.nodeId,
     required this.controlPortId,
     required this.value,
+  }) {
+    super.id = id;
+  }
+}
+
+class SetProcessorParameterValueResponse extends Response {
+  ProcessingGraphParameterValue? parameterValue;
+  String? error;
+
+  SetProcessorParameterValueResponse.uninitialized();
+
+  SetProcessorParameterValueResponse({
+    required int id,
+    this.parameterValue,
+    this.error,
   }) {
     super.id = id;
   }
@@ -354,20 +371,6 @@ class OpenPluginWindowRequest extends Request {
   OpenPluginWindowRequest.uninitialized();
 
   OpenPluginWindowRequest({required int id, required this.nodeId}) {
-    super.id = id;
-  }
-}
-
-/// An event that is fired when a third-party plugin is loaded for the given
-/// node.
-///
-/// This will only fire for nodes that load third-party plugins.
-class PluginLoadedEvent extends Response {
-  late Id nodeId;
-
-  PluginLoadedEvent.uninitialized();
-
-  PluginLoadedEvent({required int id, required this.nodeId}) {
     super.id = id;
   }
 }
@@ -448,6 +451,76 @@ class SendLiveEventRequest extends Request {
     required int id,
     required this.liveEventProviderNodeId,
     required this.event,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Saves an independently retained snapshot, including for stateless processors.
+class SaveProcessorSnapshotRequest extends Request {
+  late Id nodeId;
+  SaveProcessorSnapshotRequest.uninitialized();
+  SaveProcessorSnapshotRequest({required int id, required this.nodeId}) {
+    super.id = id;
+  }
+}
+
+class SaveProcessorSnapshotResponse extends Response {
+  /// Handed to the UI on success; the engine will not use or release this token.
+  /// The session scope retains it until the UI adopts it or the session closes.
+  String? retentionId;
+  String? error;
+  SaveProcessorSnapshotResponse.uninitialized();
+  SaveProcessorSnapshotResponse({
+    required int id,
+    this.retentionId,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Begins a paused state replacement. The recovery file is retained by the UI.
+class LoadProcessorSnapshotRequest extends Request {
+  late Id nodeId;
+  late String retentionId;
+  late String recoveryRetentionId;
+  LoadProcessorSnapshotRequest.uninitialized();
+  LoadProcessorSnapshotRequest({
+    required int id,
+    required this.nodeId,
+    required this.retentionId,
+    required this.recoveryRetentionId,
+  }) {
+    super.id = id;
+  }
+}
+
+class LoadProcessorSnapshotResponse extends Response {
+  int? operationId;
+  ProcessingGraphNodeInitializationResult? result;
+  String? error;
+  LoadProcessorSnapshotResponse.uninitialized();
+  LoadProcessorSnapshotResponse({
+    required int id,
+    this.operationId,
+    this.result,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Reconciled model updates precede this request. Rollback restores the recovery
+/// state and returns its description; otherwise publish and await activation.
+class FinishProcessorSnapshotLoadRequest extends Request {
+  late int operationId;
+  late bool rollback;
+  FinishProcessorSnapshotLoadRequest.uninitialized();
+  FinishProcessorSnapshotLoadRequest({
+    required int id,
+    required this.operationId,
+    this.rollback = false,
   }) {
     super.id = id;
   }

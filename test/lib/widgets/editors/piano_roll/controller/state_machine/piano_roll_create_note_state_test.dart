@@ -69,29 +69,26 @@ void main() {
       expect(fixture.viewModel.pressedNote, isNull);
     });
 
-    test(
-      'created notes can be repositioned during the same gesture and commit on cancel',
-      () {
-        fixture.viewModel.cursorNoteLength = 48;
+    test('created notes can be repositioned during the same gesture and commit on cancel', () {
+      fixture.viewModel.cursorNoteLength = 48;
 
-        fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
+      fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
 
-        expect(fixture.notes, isEmpty);
-        final createdNoteId = fixture.transientNotes.single.id;
+      expect(fixture.notes, isEmpty);
+      final createdNoteId = fixture.transientNotes.single.id;
 
-        fixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
-        expect(fixture.notes, isEmpty);
-        expect(fixture.transientNoteById(createdNoteId).key, equals(63));
-        expect(fixture.transientNoteById(createdNoteId).offset, equals(173));
-        fixture.pointerCancel(key: 63.5, offset: 173.8, alt: true);
+      fixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
+      expect(fixture.notes, isEmpty);
+      expect(fixture.transientNoteById(createdNoteId).key, equals(63));
+      expect(fixture.transientNoteById(createdNoteId).offset, equals(173));
+      fixture.pointerCancel(key: 63.5, offset: 173.8, alt: true);
 
-        final note = fixture.noteById(createdNoteId);
-        expect(note.key, equals(63));
-        expect(note.offset, equals(173));
+      final note = fixture.noteById(createdNoteId);
+      expect(note.key, equals(63));
+      expect(note.offset, equals(173));
 
-        fixture.project.undo();
-        expect(fixture.notes, isEmpty);
-      },
-    );
+      fixture.project.undo();
+      expect(fixture.notes, isEmpty);
+    });
   });
 }

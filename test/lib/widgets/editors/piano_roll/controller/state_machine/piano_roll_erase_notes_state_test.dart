@@ -116,25 +116,22 @@ void main() {
       expect(fixture.notes, isEmpty);
     });
 
-    test(
-      'secondary click on a resize handle outside the note body does not delete',
-      () {
-        final note = fixture.addNote(key: 60, offset: 96, length: 48);
+    test('secondary click on a resize handle outside the note body does not delete', () {
+      final note = fixture.addNote(key: 60, offset: 96, length: 48);
 
-        fixture.pointerDown(
-          key: 60.5,
-          offset: 144,
-          noteUnderCursor: note.id,
-          buttons: kSecondaryMouseButton,
-        );
-        fixture.pointerUp(key: 60.5, offset: 144);
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 144,
+        noteUnderCursor: note.id,
+        buttons: kSecondaryMouseButton,
+      );
+      fixture.pointerUp(key: 60.5, offset: 144);
 
-        expect(
-          fixture.notes.map((note) => note.id).toList(),
-          orderedEquals([note.id]),
-        );
-      },
-    );
+      expect(
+        fixture.notes.map((note) => note.id).toList(),
+        orderedEquals([note.id]),
+      );
+    });
 
     test(
       'overlapping notes are ignored until the cursor leaves and re-enters',

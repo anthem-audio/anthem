@@ -46,8 +46,7 @@ void main() {
         timeView: timeView ?? TimeViewModel(start: 0, end: 240),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       arrangement.clips[clip.id] = clip;
 
       fixture.viewModel.visibleClips.add(rect: clipRect, metadata: clip.id);

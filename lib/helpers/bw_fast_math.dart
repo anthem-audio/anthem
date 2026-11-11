@@ -37,9 +37,13 @@ const double _bwLog10Of2 = 0.3010299956639812;
 
 // dart2js cannot safely support the 64-bit typed-data accessors used by the
 // bit-level fast path below, so JS web builds use exact math fallbacks.
-const bool _bwUseJsFallback = bool.fromEnvironment('dart.tool.dart2js');
+const bool _bwUseJsFallback =
+    bool.fromEnvironment('dart.library.js_interop') &&
+    !bool.fromEnvironment('dart.tool.dart2wasm');
 
-bool _isSigned64(int value) => value >= _bwInt64Min && value <= _bwInt64Max;
+bool _isSigned64(int value) => _bwUseJsFallback
+    ? value >= -9007199254740991 && value <= 9007199254740991
+    : value >= _bwInt64Min && value <= _bwInt64Max;
 
 int _doubleToBits(double value) {
   final data = ByteData(8)..setFloat64(0, value, Endian.host);

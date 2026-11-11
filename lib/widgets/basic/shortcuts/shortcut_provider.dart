@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -139,16 +140,27 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
+    if (ServiceRegistry.dialogController.isOpen) {
+      // Modal dialogs own keyboard input, including non-text controls. Still
+      // update modifiers above so releases while a dialog is open aren't lost.
+      controller.pressedKeys.clear();
+      return false;
+    }
+
+    var handled = false;
+
     if (keyDown || keyRepeat) {
-      controller.handleKeyDown(
+      handled = controller.handleKeyDown(
         e,
         dispatchRaw: shouldDispatchRaw,
         dispatchShortcuts: shouldDispatchShortcuts,
       );
     }
-    if (keyUp) controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
+    if (keyUp) {
+      handled = controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
+    }
 
-    return false;
+    return handled;
   }
 
   bool _isEditableTextFocused() {

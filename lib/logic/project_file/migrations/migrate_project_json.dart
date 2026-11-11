@@ -1,0 +1,153 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/migrations/migration.dart';
+import 'package:anthem/logic/project_file/migrations/registry.dart';
+import 'package:anthem/logic/project_file/version.dart';
+
+const _savedVersionKey = 'savedInSoftwareVersion';
+
+/// Reads the saved software version before migrations update it.
+///
+/// Throws [InvalidProjectFileException] if the version is missing or invalid.
+ProjectFileVersion readSavedProjectVersion(ProjectJson projectJson) {
+  final savedVersionValue = projectJson[_savedVersionKey];
+  if (savedVersionValue is! String) {
+    throw const InvalidProjectFileException(
+      cause: FormatException(
+        'Expected savedInSoftwareVersion to be a version string.',
+      ),
+    );
+  }
+
+  try {
+    return ProjectFileVersion.parse(savedVersionValue);
+  } on FormatException catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
+}
+
+/// Applies every project-file migration newer than the version in
+/// [projectJson].
+///
+/// The input map is mutated and returned. Callers must discard it if a
+/// migration throws.
+///
+/// Migrations that create files write them into [projectDirectory]. For an
+/// import, prepare a temporary directory and delete it if loading fails.
+Future<ProjectJson> migrateProjectJson(
+  ProjectJson projectJson, {
+  List<ProjectFileMigration> migrations = projectFileMigrations,
+  String? projectDirectory,
+  ProjectFileVersion? currentVersion,
+  ProjectFileVersion oldestSupportedVersion = oldestSupportedProjectFileVersion,
+}) async {
+  final resolvedCurrentVersion = currentVersion ?? currentProjectFileVersion;
+
+  final savedVersion = readSavedProjectVersion(projectJson);
+
+  if (savedVersion == resolvedCurrentVersion) {
+    return projectJson;
+  }
+
+  _validateMigrationConfiguration(
+    migrations,
+    currentVersion: resolvedCurrentVersion,
+    oldestSupportedVersion: oldestSupportedVersion,
+  );
+
+  if (savedVersion < oldestSupportedVersion) {
+    throw ProjectVersionTooOldException(
+      savedVersion: savedVersion,
+      oldestSupportedVersion: oldestSupportedVersion,
+    );
+  }
+
+  if (savedVersion > resolvedCurrentVersion) {
+    throw ProjectSavedInNewerVersionException(
+      savedVersion: savedVersion,
+      currentVersion: resolvedCurrentVersion,
+    );
+  }
+
+  var migrationSourceVersion = savedVersion;
+
+  for (final migration in migrations) {
+    if (migration.targetVersion <= savedVersion) {
+      continue;
+    }
+
+    try {
+      await migration.migrate(projectJson, projectDirectory);
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        ProjectFileMigrationException(
+          fromVersion: migrationSourceVersion,
+          targetVersion: migration.targetVersion,
+          cause: error,
+          causeStackTrace: stackTrace,
+        ),
+        stackTrace,
+      );
+    }
+
+    projectJson[_savedVersionKey] = migration.targetVersion.toString();
+    migrationSourceVersion = migration.targetVersion;
+  }
+
+  projectJson[_savedVersionKey] = resolvedCurrentVersion.toString();
+  return projectJson;
+}
+
+void _validateMigrationConfiguration(
+  List<ProjectFileMigration> migrations, {
+  required ProjectFileVersion currentVersion,
+  required ProjectFileVersion oldestSupportedVersion,
+}) {
+  if (oldestSupportedVersion > currentVersion) {
+    throw StateError(
+      'The oldest supported project-file version cannot be newer than the '
+      'current version.',
+    );
+  }
+
+  ProjectFileVersion? previousVersion;
+
+  for (final migration in migrations) {
+    if (previousVersion != null && migration.targetVersion <= previousVersion) {
+      throw StateError(
+        'Project-file migrations must be ordered by strictly increasing '
+        'target version.',
+      );
+    }
+
+    if (migration.targetVersion > currentVersion) {
+      throw StateError(
+        'Project-file migration ${migration.targetVersion} is newer than the '
+        'current software version $currentVersion.',
+      );
+    }
+
+    previousVersion = migration.targetVersion;
+  }
+}

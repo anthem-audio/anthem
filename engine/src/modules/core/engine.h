@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -37,7 +38,11 @@
 #include "modules/audio/audio_session_controller.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/engine_runtime_services.h"
+#include "modules/core/file_storage_client.h"
+#include "modules/core/ipc_request_client.h"
+#include "modules/core/processor_state_storage.h"
 #include "modules/core/visualization/global_visualization_sources.h"
+#include "modules/core/visualization/visualization_comms.h"
 #include "modules/processing_graph/graph_processor.h"
 #include "modules/render/render_controller.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
@@ -52,6 +57,16 @@ class ProcessingGraphNodeInitializationSession;
 
 using InitializeProcessingGraphNodesCallback =
     std::function<void(std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>)>;
+
+// Result of engine-local initialization that must complete before normal
+// requests can be processed.
+struct EngineBootstrapResult {
+  std::optional<std::string> error = std::nullopt;
+
+  bool succeeded() const noexcept {
+    return !error.has_value();
+  }
+};
 
 class Engine {
 private:
@@ -68,6 +83,8 @@ private:
   // a node with the same ID has been removed and later recreated as a distinct
   // model object.
   std::unordered_map<int64_t, std::weak_ptr<Node>> initializedProcessingGraphNodes;
+
+  EngineBootstrapResult bootstrapResult;
 public:
   // The project model.
   //
@@ -97,12 +114,12 @@ public:
   // reaching through the engine singleton.
   std::unique_ptr<EngineRuntimeServices> engineRuntimeServices;
 
-  // Executes the processing graph on the audio thread.
-  std::unique_ptr<GraphProcessor> graphProcessor;
-
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
+
+  // Owns the separate channel for visualization records sent to the UI.
+  VisualizationComms visualizationComms;
 
 #ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
@@ -112,6 +129,19 @@ public:
   // The UI communication layer. This is used to send and receive messages from
   // the UI.
   Comms comms;
+
+  // Tracks requests initiated by the engine, without blocking the message loop.
+  IpcRequestClient uiRequests;
+
+  // Requests file access from the UI without transporting file contents.
+  FileStorageClient fileStorage;
+
+  // Stores opaque processor snapshots without sending their bytes through IPC.
+  ProcessorStateStorage processorStateStorage;
+
+  // Owns graph execution, publication, and node suspension. Declared after
+  // storage so pending operations are cancelled before their services are destroyed.
+  std::unique_ptr<GraphProcessor> graphProcessor;
 
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared
@@ -130,8 +160,10 @@ public:
   // Handles command messages from the UI.
   CommandHandler commandHandler;
 
+  // Constructs the services and connects their dependencies without starting them.
   Engine();
 
+  // Starts background work and initializes the communication channels.
   void initialize();
 
   // Singleton instance getter
@@ -152,11 +184,15 @@ public:
 
   void shutdown();
 
+  const EngineBootstrapResult& getBootstrapResult() const noexcept {
+    return bootstrapResult;
+  }
+
   // Initializes the delta between the current shared model graph and
   // initializedProcessingGraphNodes. Nodes already present in the tracker are
   // left alone; new or replaced nodes are prepared and reported individually.
   void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
-  void publishProcessingGraph();
+  uint64_t publishProcessingGraph();
 };
 
 } // namespace anthem

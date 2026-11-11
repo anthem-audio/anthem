@@ -36,9 +36,10 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/render_dialog.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
+import 'package:anthem/widgets/main_window/settings_dialog.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show showLicensePage;
+import 'package:material_ui/material_ui.dart' show showLicensePage;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -178,7 +179,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
@@ -194,7 +195,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
@@ -214,13 +215,13 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
             backgroundHover: Color(0xFFBA322B),
-            icon: Icons.close,
+            icon: Icons.closeWindow,
             onPress: () {
               windowManager.close();
             },
@@ -338,9 +339,8 @@ class _TabState extends State<_Tab> {
                       icon: Icons.close,
                       onPress: () {
                         closePressed = true;
-                        ServiceRegistry.forProject(
-                          widget.id,
-                        ).projectController.close();
+                        ServiceRegistry.forProject(widget.id).projectController
+                            .close();
                       },
                     ),
                   ),
@@ -380,7 +380,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     final mainWindowController = ServiceRegistry.mainWindowController;
 
     final activeProjectId = AnthemStore.instance.activeProjectId;
-    final activeProject = AnthemStore.instance.projects[activeProjectId]!;
+    final activeProject = AnthemStore.instance.projects[activeProjectId];
 
     final dialogController = ServiceRegistry.dialogController;
 
@@ -402,124 +402,142 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           text: 'Load project...',
           hint: 'Load a project',
           onSelected: () {
-            mainWindowController.loadProject().then((projectId) {
-              if (projectId != null) {
-                mainWindowController.switchTab(projectId);
-              }
-            });
+            mainWindowController
+                .loadProject(dialogController: dialogController)
+                .then((projectId) {
+                  if (projectId != null) {
+                    mainWindowController.switchTab(projectId);
+                  }
+                });
           },
         ),
-        Separator(),
-        if (!kIsWeb)
+        if (activeProject != null) ...[
+          Separator(),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Save',
+              hint: 'Save the active project',
+              onSelected: () {
+                mainWindowController.saveProject(
+                  activeProject.id,
+                  false,
+                  dialogController: dialogController,
+                );
+              },
+            ),
           AnthemMenuItem(
-            text: 'Save',
-            hint: 'Save the active project',
+            text: kIsWeb ? 'Download project...' : 'Save as...',
+            hint: kIsWeb
+                ? 'Download the active project and its assets as a ZIP file'
+                : 'Save the active project to a new location',
             onSelected: () {
               mainWindowController.saveProject(
                 activeProject.id,
-                false,
+                true,
                 dialogController: dialogController,
               );
             },
           ),
-        AnthemMenuItem(
-          text: kIsWeb ? 'Download project...' : 'Save as...',
-          hint: 'Save the active project to a new location',
-          onSelected: () {
-            mainWindowController.saveProject(
-              activeProject.id,
-              true,
-              dialogController: dialogController,
-            );
-          },
-        ),
-        if (!kIsWeb)
-          AnthemMenuItem(
-            text: 'Render...',
-            hint: 'Render the active project',
-            disabled: activeProject.engineState != EngineState.running,
-            onSelected: () async {
-              if (activeProject.engineState != EngineState.running) return;
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Export to zip...',
+              hint: 'Export the active project and its assets to a ZIP file',
+              onSelected: () {
+                mainWindowController.exportProjectZip(
+                  activeProject.id,
+                  dialogController: dialogController,
+                );
+              },
+            ),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Render...',
+              hint: 'Render the active project',
+              disabled: activeProject.engineState != EngineState.running,
+              onSelected: () async {
+                if (activeProject.engineState != EngineState.running) return;
 
-              final renderDialogController = RenderDialogController.forProject(
-                activeProject,
-              );
-              await renderDialogController.loadSavedState();
-              final pickedFile = await renderDialogController.chooseFile();
-              if (!pickedFile) {
-                return;
-              }
+                final renderDialogController =
+                    RenderDialogController.forProject(activeProject);
+                await renderDialogController.loadSavedState();
+                final pickedFile = await renderDialogController.chooseFile();
+                if (!pickedFile) {
+                  return;
+                }
 
-              if (activeProject.engineState != EngineState.running) return;
+                if (activeProject.engineState != EngineState.running) return;
 
-              dialogController.showDialog(
-                title: 'Render',
-                content: RenderDialog(controller: renderDialogController),
-                buttons: [
-                  DialogButton(
-                    text: 'Render',
-                    shouldCloseDialog: false,
-                    onPress: renderDialogController.render,
+                dialogController.showDialog(
+                  title: 'Render',
+                  content: RenderDialog(controller: renderDialogController),
+                  buttons: [
+                    DialogButton(
+                      text: 'Render',
+                      shouldCloseDialog: false,
+                      onPress: renderDialogController.render,
+                    ),
+                  ],
+                );
+              },
+            ),
+          if (kDebugMode) Separator(),
+          if (kDebugMode)
+            AnthemMenuItem(
+              text: 'Debug',
+              submenu: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'Print project JSON (UI)',
+                    hint: 'Print the project JSON as reported by the UI',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        jsonEncode(
+                          AnthemStore
+                              .instance
+                              .projects[AnthemStore.instance.activeProjectId]!
+                              .toJson(),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              );
-            },
-          ),
-        if (kDebugMode) Separator(),
-        if (kDebugMode)
-          AnthemMenuItem(
-            text: 'Debug',
-            submenu: MenuDef(
-              children: [
-                AnthemMenuItem(
-                  text: 'Print project JSON (UI)',
-                  hint: 'Print the project JSON as reported by the UI',
-                  onSelected: () async {
-                    // ignore: avoid_print
-                    print(
-                      jsonEncode(
-                        AnthemStore
+                  AnthemMenuItem(
+                    text: 'Print project JSON (engine)',
+                    hint: 'Print the project JSON as reported by the engine',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        await AnthemStore
                             .instance
                             .projects[AnthemStore.instance.activeProjectId]!
-                            .toJson(),
-                      ),
-                    );
-                  },
-                ),
-                AnthemMenuItem(
-                  text: 'Print project JSON (engine)',
-                  hint: 'Print the project JSON as reported by the engine',
-                  onSelected: () async {
-                    // ignore: avoid_print
-                    print(
-                      await AnthemStore
-                          .instance
-                          .projects[AnthemStore.instance.activeProjectId]!
-                          .engine
-                          .modelSyncApi
-                          .debugGetEngineJson(),
-                    );
-                  },
-                ),
-                Separator(),
-                AnthemMenuItem(
-                  text: 'Open widget test area',
-                  onSelected: () {
-                    final projectViewModel = getProjectController().viewModel;
+                            .engine
+                            .modelSyncApi
+                            .debugGetEngineJson(),
+                      );
+                    },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Open widget test area',
+                    onSelected: () {
+                      final projectViewModel = getProjectController().viewModel;
 
-                    projectViewModel.topPanelOverlayContentBuilder =
-                        (context) => const WidgetTestArea();
-                  },
-                ),
-              ],
+                      projectViewModel.topPanelOverlayContentBuilder = (
+                        context,
+                      ) => const WidgetTestArea();
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
+        ],
       ],
     );
     final editMenuDef = MenuDef(
       children: [
         AnthemMenuItem(
           text: 'Undo',
+          disabled: activeProject == null,
           shortcutLabel: 'Ctrl+Z',
           onSelected: () {
             getProjectController().undo();
@@ -528,12 +546,17 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
         ),
         AnthemMenuItem(
           text: 'Redo',
+          disabled: activeProject == null,
           shortcutLabel: 'Ctrl+Shift+Z',
           onSelected: () {
             getProjectController().redo();
           },
           hint: 'Redo (Ctrl+Shift+Z)',
         ),
+        if (!kIsWeb) ...[
+          Separator(),
+          AnthemMenuItem(text: 'Settings…', onSelected: showSettingsDialog),
+        ],
       ],
     );
     final helpMenuDef = MenuDef(

@@ -110,7 +110,9 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return;
     }
 
-    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(start.y);
+    final rowHit = viewModel.trackLayout.rowLayoutAtContentY(
+      start.y + interactionState.renderedVerticalScrollPosition,
+    );
     if (rowHit == null) {
       _targetRowId = null;
       return;
@@ -248,20 +250,20 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     );
   }
 
-  Id? _rowIdForCreate(ArrangerRow row) {
+  Id? _rowIdForCreate(TrackRow row) {
     return switch (row) {
-      TrackArrangerRow(:final trackId) =>
+      ProjectTrackRow(:final trackId) =>
         project.tracks.containsKey(trackId) ? trackId : null,
-      PhantomAutomationArrangerRow() => row.rowId,
+      PhantomAutomationTrackRow() => row.rowId,
     };
   }
 
   Color? _clipCreateHintColor(Id rowId) {
-    final trackId = switch (viewModel.trackPositionCalculator.tryRowIdToRow(
-      rowId,
-    )) {
-      TrackArrangerRow(:final trackId) => trackId,
-      PhantomAutomationArrangerRow(:final phantomLane) =>
+    final trackId = switch (viewModel.trackLayout
+        .tryRowLayoutForId(rowId)
+        ?.row) {
+      ProjectTrackRow(:final trackId) => trackId,
+      PhantomAutomationTrackRow(:final phantomLane) =>
         phantomLane.parentTrackId,
       null => null,
     };
@@ -296,13 +298,13 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return;
     }
 
-    switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
-      case TrackArrangerRow(:final trackId):
+    switch (viewModel.trackLayout.tryRowLayoutForId(rowId)?.row) {
+      case ProjectTrackRow(:final trackId):
         if (project.tracks.containsKey(trackId)) {
           controller.createClip(trackId: trackId, offset: offset, width: width);
         }
         break;
-      case PhantomAutomationArrangerRow(:final phantomLane):
+      case PhantomAutomationTrackRow(:final phantomLane):
         final target = phantomLane.target;
         if (target != null) {
           controller.createClipForAutomationTarget(

@@ -20,6 +20,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
 import 'package:anthem/logic/project_file/io.dart';
@@ -29,27 +30,53 @@ import 'package:anthem/model/project.dart';
 ///
 /// The file container is a small Anthem-specific header followed by a gzip
 /// frame containing the UTF-8 JSON project model.
-Future<Uint8List> encodeProjectFile(ProjectModel project) async {
+Future<Uint8List> encodeProjectFile(ProjectModel project) =>
+    encodeProjectJson(project.toJson());
+
+/// Encodes an already captured document, independently of later model edits.
+Future<Uint8List> encodeProjectJson(Map<String, dynamic> projectJson) async {
   final output = BytesBuilder(copy: false)..add(projectFileHeader);
-  final json = Uint8List.fromList(JsonUtf8Encoder().convert(project.toJson()));
+  final json = Uint8List.fromList(JsonUtf8Encoder().convert(projectJson));
   final compressedJson = await compressGzip(json);
 
   output.add(compressedJson);
   return output.takeBytes();
 }
 
-/// Decodes an Anthem project file from bytes.
+/// Decodes the stored JSON without migrating it.
+///
+/// The loading workflow reads the saved software version before applying
+/// migrations and constructing the project model.
 Future<Map<String, dynamic>> decodeProjectFileBytes(List<int> bytes) async {
-  final decompressedJson = await decompressGzip(getProjectFilePayload(bytes));
-  return decodeProjectJson(decompressedJson);
+  try {
+    final decompressedJson = await decompressGzip(getProjectFilePayload(bytes));
+    return decodeProjectJson(decompressedJson);
+  } catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
 }
 
 /// Writes a project to an Anthem project file.
 Future<void> writeProjectFile(String path, ProjectModel project) async {
-  await writeProjectFileToPath(path, project);
+  await writeProjectFileToPath(path, project.toJson());
 }
 
-/// Reads an Anthem project file.
+/// Reads the stored JSON without migrating it.
+///
+/// The loading workflow reads the saved software version before applying
+/// migrations and constructing the project model.
 Future<Map<String, dynamic>> readProjectFile(String path) async {
-  return await readProjectFileFromPath(path);
+  try {
+    return await readProjectFileFromPath(path);
+  } on ProjectFileReadException {
+    rethrow;
+  } catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
 }

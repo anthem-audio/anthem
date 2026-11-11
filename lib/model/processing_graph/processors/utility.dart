@@ -21,13 +21,12 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'utility.g.dart';
 
@@ -68,64 +67,17 @@ class UtilityProcessorModel extends _UtilityProcessorModel
       _$UtilityProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioInputPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-            channelCount: 2,
-          ),
-        ),
-      ]),
-      audioOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioOutputPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-            channelCount: 2,
-          ),
-        ),
-      ]),
-      controlInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: gainPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: gainPortId,
-              defaultValue: gainParameterZeroDbNormalized,
-              displayMode: ParameterDisplayMode.gainDb,
-              unitLabel: 'dB',
-            ),
-          ),
-        ),
-        NodePortModel(
-          nodeId: nodeId,
-          id: balancePortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: balancePortId,
-              defaultValue: UtilityProcessorModel.panToParameterValue(0.0),
-              displayMode: ParameterDisplayMode.pan,
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioInputPortIds: [audioInputPortId],
+    audioOutputPortIds: [audioOutputPortId],
+    controlInputPortIds: [gainPortId, balancePortId],
+  );
 
-  static int get audioInputPortId => _UtilityProcessorModel.audioInputPortId;
-  static int get audioOutputPortId => _UtilityProcessorModel.audioOutputPortId;
-  static int get gainPortId => _UtilityProcessorModel.gainPortId;
-  static int get balancePortId => _UtilityProcessorModel.balancePortId;
+  static const int audioInputPortId = _UtilityProcessorModel.audioInputPortId;
+  static const int audioOutputPortId = _UtilityProcessorModel.audioOutputPortId;
+  static const int gainPortId = _UtilityProcessorModel.gainPortId;
+  static const int balancePortId = _UtilityProcessorModel.balancePortId;
 
   static double parameterValueToPan(double parameterValue) {
     assert(parameterValue >= 0.0 && parameterValue <= 1.0);
@@ -150,6 +102,7 @@ class UtilityProcessorModel extends _UtilityProcessorModel
 
 abstract class _UtilityProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
   static const int gainPortId = 2;

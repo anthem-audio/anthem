@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,10 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_emscripten_interface.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:flutter/foundation.dart';
 
 class EngineConnector extends EngineConnectorBase {
@@ -29,41 +32,91 @@ class EngineConnector extends EngineConnectorBase {
     onMessageReceived: (bytes) {
       onReceive(bytes);
     },
+    onPollVisualization: pollVisualizationRecords,
+    onExit: dispose,
   );
 
   bool _isInitialized = false;
+  bool _disposed = false;
+  bool _exitSent = false;
+  Future<void>? _shutdown;
 
   final List<Uint8List> _pendingMessages = [];
+
+  @override
+  int? get processExitCode => engineInterface.exitCode;
+
+  @override
+  void sendMessage(IpcMessage message) {
+    if (message is Exit) _exitSent = true;
+    super.sendMessage(message);
+  }
+
+  /// Waits for the runtime to exit before the engine releases its file scope.
+  /// During startup cancellation, finish connecting and send the exit request
+  /// here because Engine has not yet completed its startup handshake. A timeout
+  /// ends the caller's wait; cleanup continues until the runtime exits.
+  @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) =>
+      (_shutdown ??= _shutdownRuntime().catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        _shutdown = null;
+        Error.throwWithStackTrace(error, stack);
+      })).timeout(timeout);
+
+  Future<void> _shutdownRuntime() async {
+    final initialized = await onInit;
+    if (initialized && !_exitSent && engineInterface.exitCode == null) {
+      sendMessage(Exit(id: getRequestId()));
+    }
+    if (engineInterface.hasModule) {
+      await engineInterface.exited;
+    }
+    dispose();
+  }
 
   EngineConnector(
     int id, {
     required super.kDebugMode,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     void Function()? onExit,
     super.noHeartbeat = false,
     String? enginePathOverride,
   }) {
-    onInit = engineInterface.init().then((_) {
-      _init();
-      return true;
-    });
+    onInit = engineInterface
+        .init()
+        .then((_) {
+          if (_disposed) return false;
+          final reader = engineInterface.visualizationRingBufferReader;
+          visualizationRecordConsumer = VisualizationRecordConsumer(
+            tryAcquire: reader.tryAcquire,
+            release: reader.release,
+            onRecord: handleVisualizationRecord,
+            availableBytes: () => reader.availableBytes,
+          );
+          _init();
+          return true;
+        })
+        .catchError((Object error) {
+          dispose();
+          return false;
+        });
   }
 
   void _init() {
+    _isInitialized = true;
     for (var message in _pendingMessages) {
-      send(message);
+      sendBytes(message);
     }
     _pendingMessages.clear();
-
-    _isInitialized = true;
-
-    for (var message in _pendingMessages) {
-      send(message);
-    }
   }
 
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
+    if (_disposed) return;
     if (!_isInitialized) {
       _pendingMessages.add(bytes);
       return;
@@ -88,5 +141,21 @@ class EngineConnector extends EngineConnectorBase {
     }
 
     engineInterface.sendMessage(bytes);
+  }
+
+  @override
+  void finalizeVisualizationSharedMemorySetup() {
+    // Web does not use an OS shared-memory identifier. Its visualization
+    // transport will live directly in shared WebAssembly memory.
+  }
+
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _isInitialized = false;
+    super.dispose();
+    engineInterface.dispose();
+    _pendingMessages.clear();
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,8 +28,8 @@ class MicrotaskDebouncedAction {
 
   MicrotaskDebouncedAction(this.action);
 
-  /// Executes the action after the specified delay.
-  void execute() async {
+  /// Schedules the action once for the next microtask.
+  void execute() {
     if (_future != null) {
       return;
     }
@@ -38,8 +38,8 @@ class MicrotaskDebouncedAction {
   }
 
   void _performAction() {
-    action();
     _future = null;
+    action();
   }
 }
 
@@ -49,8 +49,8 @@ class MicrotaskDebouncedAction {
 /// If `execute()` is called *again* during the cooldown window, the action
 /// is guaranteed to run once more — as soon as the remaining cooldown time
 /// has passed — but it will not be scheduled repeatedly for every call.
-class TimerDebouncedAction {
-  TimerDebouncedAction(this.action, this.cooldown);
+class TimerThrottledAction {
+  TimerThrottledAction(this.action, this.cooldown);
 
   /// The work to perform.
   final void Function() action;
@@ -61,7 +61,7 @@ class TimerDebouncedAction {
   DateTime? _lastRun; // When the action actually ran last.
   Timer? _pendingTimer; // One pending run, if needed.
 
-  /// Request that the action execute, observing the debounce rules.
+  /// Requests execution, limiting runs to once per [cooldown].
   void execute() {
     final now = DateTime.now();
 

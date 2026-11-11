@@ -35,7 +35,7 @@ import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 class DeviceController {
   final ProjectModel project;
@@ -82,7 +82,7 @@ class DeviceController {
 
     if (descriptor == null) return;
 
-    project.execute(
+    await project.execute(
       DeviceAddRemoveCommand.add(
         project: project,
         trackId: trackId,
@@ -109,16 +109,25 @@ class DeviceController {
       );
     }
 
-    final result = await FilePicker.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
-      initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
-    );
+    // Linux VST3 bundles are directories
+    final String? path;
+    if (Platform.isLinux) {
+      path = await getDirectoryPath(
+        initialDirectory: initialDirectory,
+        confirmButtonText: 'Choose plugin',
+      );
+    } else {
+      path = (await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'VST3 plugins', extensions: ['vst3']),
+        ],
+        initialDirectory: initialDirectory,
+        confirmButtonText: 'Choose plugin',
+      ))?.path;
+    }
+    if (path == null) return null;
 
-    final path = result?.files[0].path;
-
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
+    if (!path.toLowerCase().endsWith('.vst3')) {
       dialogController.showMarkdownDialog(
         title: 'Error',
         markdown:
@@ -132,14 +141,14 @@ class DeviceController {
     return DeviceDescriptorForCommand(
       type: DeviceType.vst3Plugin,
       index: index,
-      vst3Path: path!,
+      vst3Path: path,
     );
   }
 
-  void removeDevice({required Id trackId, required Id deviceId}) {
+  Future<void> removeDevice({required Id trackId, required Id deviceId}) async {
     _requireDeviceTrack(trackId, 'removeDevice');
 
-    project.execute(
+    await project.execute(
       DeviceAddRemoveCommand.remove(
         project: project,
         trackId: trackId,
@@ -199,6 +208,8 @@ class DeviceController {
     }
     final processing = track.requireProcessing;
 
+    // Cached default ports preserve routing intent even while unavailable.
+    // The engine filters unavailable connections when publishing the graph.
     disconnectTrackDeviceRouting(trackId);
 
     final generatedConnectionIds = <Id>[];

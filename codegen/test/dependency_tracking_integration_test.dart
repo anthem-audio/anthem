@@ -39,6 +39,7 @@ void main() {
         'lib/messages.dart': _messagesLibrary,
         'lib/imported.dart': _plainImportedValue,
         'lib/root.dart': _rootLibrary,
+        'lib/envelope.dart': _envelopeLibrary,
       });
 
       await fixturePackage.pubGet();
@@ -89,6 +90,14 @@ void main() {
       expect(
         updatedRootHeader,
         contains('std::optional<std::shared_ptr<ImportedValue>> child;'),
+      );
+      final envelopeHeader = await fixturePackage.readFile(
+        'engine/src/generated/lib/envelope.h',
+      );
+      expect(envelopeHeader, contains('#include "imported.h"'));
+      expect(
+        envelopeHeader,
+        contains('std::optional<std::shared_ptr<ImportedValue>> metadata;'),
       );
     },
     timeout: const Timeout(Duration(minutes: 6)),
@@ -285,6 +294,31 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.11.1
+''';
+
+const _envelopeLibrary = r'''
+import 'package:anthem_codegen/include.dart';
+import 'imported.dart';
+
+part 'envelope.g.dart';
+
+@AnthemModel(serializable: true, generateCpp: true)
+sealed class Envelope extends _Envelope with _$EnvelopeAnthemModelMixin {
+  Envelope();
+
+  factory Envelope.fromJson(Map<String, dynamic> json) =>
+      _$EnvelopeAnthemModelMixin.fromJson(json);
+}
+
+class _Envelope {
+  int id = 0;
+}
+
+class EnvelopePayload extends Envelope {
+  ImportedValue? metadata;
+
+  EnvelopePayload();
+}
 ''';
 
 const _messagesLibrary = r'''

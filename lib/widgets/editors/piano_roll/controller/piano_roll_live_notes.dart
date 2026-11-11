@@ -46,9 +46,9 @@ class PianoRollLiveNotes {
       return;
     }
 
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(project.id)
+        .projectController
+        .liveEventManager;
 
     if (_notes.containsKey(key)) {
       liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
@@ -70,9 +70,9 @@ class PianoRollLiveNotes {
       return;
     }
 
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(project.id)
+        .projectController
+        .liveEventManager;
 
     if (_notes.containsKey(key)) {
       liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
@@ -86,9 +86,9 @@ class PianoRollLiveNotes {
       return;
     }
 
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(project.id)
+        .projectController
+        .liveEventManager;
 
     for (final key in _notes.keys) {
       liveEventManager.noteOff(trackId: activeTrackId, pitch: key);

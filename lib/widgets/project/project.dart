@@ -106,7 +106,7 @@ class _ProjectState extends State<Project> {
                     hidden: !projectModel.isDetailViewOpen,
                     orientation: .left,
                     sizeBehavior: .pixels,
-                    panelStartSize: 200,
+                    panelFixedSize: 200,
                     panelMinSize: 200,
                     // Left side-panel content
                     panelContent: const RepaintBoundary(

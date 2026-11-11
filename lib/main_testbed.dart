@@ -26,7 +26,7 @@ import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
@@ -293,14 +293,17 @@ class _WidgetTestbedAppState extends State<WidgetTestbedApp> {
         ),
       ),
       builder: (context, child) {
-        return GestureDetector(
-          // Un-focus text boxes when clicking elsewhere
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(
-              context,
-            ).copyWith(scrollbars: false),
-            child: child!,
+        // Match the app's compatibility support for legacy dependencies.
+        // ignore: deprecated_member_use
+        return MaterialUiCompatibilityBridge(
+          child: GestureDetector(
+            // Un-focus text boxes when clicking elsewhere
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context)
+                  .copyWith(scrollbars: false),
+              child: child!,
+            ),
           ),
         );
       },

@@ -273,6 +273,46 @@ void main() {
   });
 
   group('DownsamplingCurveBuilder', () {
+    for (final (startY, endY) in [(10.0, 30.0), (30.0, 10.0)]) {
+      test('fills only toward the baseline when crossing $startY to $endY', () async {
+        final fill = CoordinateBuffer();
+        final lines = LineBuffer();
+        final builder = DownsamplingCurveBuilder(
+          lineBuffer: lines,
+          lineJoinBuffer: CoordinateBuffer(),
+          triCoordBuffer: fill,
+          baseY: 20,
+        );
+        builder.addPoint(0, startY);
+        builder.addPoint(100, endY);
+        builder.finish();
+        expect(lines.lineCount, 1);
+
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
+        canvas.drawVertices(
+          ui.Vertices.raw(ui.VertexMode.triangles, fill.buffer),
+          ui.BlendMode.srcOver,
+          ui.Paint()..color = const ui.Color(0x80FFFFFF),
+        );
+        final image = await recorder.endRecording().toImage(100, 40);
+        final pixels = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        image.dispose();
+        int alpha(int x, int y) => pixels.getUint8((y * 100 + x) * 4 + 3);
+        final leftFillY = startY < 20 ? 17 : 22;
+        final rightFillY = endY < 20 ? 17 : 22;
+        // No overlap/double opacity and no fill on the wrong side of the curve.
+        expect(alpha(10, leftFillY), 128);
+        expect(alpha(90, rightFillY), 128);
+        expect(alpha(10, rightFillY), 0);
+        expect(alpha(90, leftFillY), 0);
+        expect(alpha(50, 15), 0);
+        expect(alpha(50, 25), 0);
+      });
+    }
+
     test('collapses nearly straight points into fewer segments', () {
       final lineBuffer = LineBuffer();
       final lineJoinBuffer = CoordinateBuffer();
@@ -348,6 +388,39 @@ void main() {
   });
 
   group('renderAutomationCurve', () {
+    test('changing fill baseline preserves curve strokes and joins', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 0.1, curve: AutomationCurveType.smooth),
+        (offset: 35, value: 0.9, curve: AutomationCurveType.smooth),
+        (offset: 70, value: 0.2, curve: AutomationCurveType.smooth),
+      ]);
+      final original = _renderClipCurve(points);
+      for (final baseline in [0.5, 0.25]) {
+        final centered = _renderClipCurve(
+          points,
+          normalizedVisualBaseline: baseline,
+          yDrawPositionPixels: (10, 50),
+        );
+        final sameBounds = _renderClipCurve(
+          points,
+          yDrawPositionPixels: (10, 50),
+        );
+        expect(centered.lines.buffer, orderedEquals(sameBounds.lines.buffer));
+        expect(centered.joins.buffer, orderedEquals(sameBounds.joins.buffer));
+        expect(
+          centered.fill.buffer,
+          isNot(orderedEquals(sameBounds.fill.buffer)),
+        );
+        _expectCoordinateInBuffer(
+          centered.fill,
+          x: centered.lines.buffer.first,
+          y: 10 + 40 * (1 - baseline),
+          tolerance: 1e-4,
+        );
+      }
+      expect(original.lines.lineCount, greaterThan(0));
+    });
+
     test('returns immediately with fewer than two points', () {
       final points = _makePointModelList([
         (offset: 0, value: 0.5, curve: AutomationCurveType.smooth),
@@ -602,99 +675,123 @@ void main() {
       },
     );
 
-    test('correctForClipBounds shifts start sample by one pixel', () {
+    for (final tension in [-0.95, 0.95]) {
+      test(
+        'clip correction preserves source endpoint values: tension=$tension',
+        () {
+          final points = _makePointModelList([
+            (offset: 0, value: 1.0, curve: AutomationCurveType.smooth),
+            (offset: 70, value: 0.0, curve: AutomationCurveType.smooth),
+          ]);
+          points.last.tension = tension;
+
+          // Cover both a complete segment and a trimmed source window.
+          for (final (start, end) in [(0.0, 70.0), (20.0, 55.0)]) {
+            final original = _renderClipCurve(
+              points,
+              clipStart: start,
+              clipEnd: end,
+              correctForClipBounds: false,
+            );
+            final corrected = _renderClipCurve(
+              points,
+              clipStart: start,
+              clipEnd: end,
+            );
+            expect(original.lines.lineCount, greaterThan(0));
+            expect(corrected.lines.lineCount, greaterThan(0));
+            expect(
+              corrected.lines.buffer[1],
+              closeTo(original.lines.buffer[1], 1e-4),
+            );
+            expect(
+              corrected.lines.buffer.last,
+              closeTo(original.lines.buffer.last, 1e-4),
+            );
+          }
+        },
+      );
+    }
+
+    test('clip correction keeps the same curve when the viewport changes', () {
       final points = _makePointModelList([
-        (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
-        (offset: 200, value: 0.8, curve: AutomationCurveType.smooth),
+        (offset: 0, value: 1.0, curve: AutomationCurveType.smooth),
+        (offset: 140, value: 0.0, curve: AutomationCurveType.smooth),
       ]);
-
-      final withoutCorrection = (
-        lineBuffer: LineBuffer(),
-        lineJoinBuffer: CoordinateBuffer(),
-        triCoordBuffer: CoordinateBuffer(),
+      final full = _renderClipCurve(
+        points,
+        clipOffset: 30,
+        clipEnd: 140,
+        viewEnd: 200,
+        canvasWidth: 200,
       );
-      final withCorrection = (
-        lineBuffer: LineBuffer(),
-        lineJoinBuffer: CoordinateBuffer(),
-        triCoordBuffer: CoordinateBuffer(),
+      final cropped = _renderClipCurve(
+        points,
+        clipOffset: 30,
+        clipEnd: 140,
+        viewStart: 50,
+        viewEnd: 150,
       );
+      expect(full.lines.lineCount, greaterThan(0));
+      expect(cropped.lines.lineCount, greaterThan(0));
 
-      final recorderA = ui.PictureRecorder();
-      final canvasA = ui.Canvas(recorderA);
-      renderAutomationCurve(
-        canvas: canvasA,
-        canvasSize: const ui.Size(100, 40),
-        xDrawPositionTime: (0.0, 100.0),
-        yDrawPositionPixels: (0.0, 40.0),
-        points: points,
-        strokeWidth: 2.0,
-        timeViewStart: 0.0,
-        timeViewEnd: 100.0,
-        clipStart: 50.0,
-        clipEnd: 120.0,
-        clipOffset: 10.0,
-        lineBuffer: withoutCorrection.lineBuffer,
-        lineJoinBuffer: withoutCorrection.lineJoinBuffer,
-        triCoordBuffer: withoutCorrection.triCoordBuffer,
-        correctForClipBounds: false,
-      );
-
-      final recorderB = ui.PictureRecorder();
-      final canvasB = ui.Canvas(recorderB);
-      renderAutomationCurve(
-        canvas: canvasB,
-        canvasSize: const ui.Size(100, 40),
-        xDrawPositionTime: (0.0, 100.0),
-        yDrawPositionPixels: (0.0, 40.0),
-        points: points,
-        strokeWidth: 2.0,
-        timeViewStart: 0.0,
-        timeViewEnd: 100.0,
-        clipStart: 50.0,
-        clipEnd: 120.0,
-        clipOffset: 10.0,
-        lineBuffer: withCorrection.lineBuffer,
-        lineJoinBuffer: withCorrection.lineJoinBuffer,
-        triCoordBuffer: withCorrection.triCoordBuffer,
-        correctForClipBounds: true,
-      );
-
-      final firstXWithoutCorrection = withoutCorrection.lineBuffer.buffer[0];
-      final firstXWithCorrection = withCorrection.lineBuffer.buffer[0];
-
-      expect(
-        firstXWithCorrection - firstXWithoutCorrection,
-        closeTo(1.0, 1e-6),
-      );
+      // Cropped endpoints should lie on the full rendered curve, regardless
+      // of the inset policy. Allow subpixel differences from downsampling.
+      final croppedCoordinates = cropped.lines.buffer;
+      for (final i in [0, croppedCoordinates.length - 2]) {
+        expect(
+          croppedCoordinates[i + 1],
+          closeTo(_lineYAt(full.lines, croppedCoordinates[i] + 50), 0.1),
+        );
+      }
     });
 
-    test(
-      'paint path clears provided line buffer when all buffers are not provided',
-      () {
-        final points = _makePointModelList([
-          (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
-          (offset: 100, value: 0.8, curve: AutomationCurveType.smooth),
-        ]);
+    test('narrow clips are omitted or produce valid geometry', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 1.0, curve: AutomationCurveType.smooth),
+        (offset: 70, value: 0.0, curve: AutomationCurveType.smooth),
+      ]);
+      for (final width in [0.0, 0.25, 1.0, 2.0]) {
+        final geometry = _renderClipCurve(points, clipEnd: width);
+        for (final buffer in [
+          geometry.lines.buffer,
+          geometry.joins.buffer,
+          geometry.fill.buffer,
+        ]) {
+          expect(buffer.every((coordinate) => coordinate.isFinite), isTrue);
+        }
+        final lines = geometry.lines.buffer;
+        for (var i = 0; i < lines.length; i += 4) {
+          expect(lines[i + 2], greaterThanOrEqualTo(lines[i] - 1e-6));
+        }
+        expect(points.observationBlockDepth, 0);
+      }
+    });
 
-        final lineBuffer = LineBuffer();
-        final recorder = ui.PictureRecorder();
-        final canvas = ui.Canvas(recorder);
+    test('paint path clears provided line buffer when all buffers are not provided', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
+        (offset: 100, value: 0.8, curve: AutomationCurveType.smooth),
+      ]);
 
-        renderAutomationCurve(
-          canvas: canvas,
-          canvasSize: const ui.Size(100, 40),
-          xDrawPositionTime: (0.0, 100.0),
-          yDrawPositionPixels: (0.0, 40.0),
-          points: points,
-          strokeWidth: 2.0,
-          timeViewStart: 0.0,
-          timeViewEnd: 100.0,
-          lineBuffer: lineBuffer,
-        );
+      final lineBuffer = LineBuffer();
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
 
-        expect(lineBuffer.lineCount, equals(0));
-      },
-    );
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: const ui.Size(100, 40),
+        xDrawPositionTime: (0.0, 100.0),
+        yDrawPositionPixels: (0.0, 40.0),
+        points: points,
+        strokeWidth: 2.0,
+        timeViewStart: 0.0,
+        timeViewEnd: 100.0,
+        lineBuffer: lineBuffer,
+      );
+
+      expect(lineBuffer.lineCount, equals(0));
+    });
 
     test('paint path produces visible pixels', () async {
       final points = _makePointModelList([
@@ -723,6 +820,65 @@ void main() {
       expect(nonTransparentPixelCount, greaterThan(0));
     });
   });
+}
+
+({LineBuffer lines, CoordinateBuffer joins, CoordinateBuffer fill})
+_renderClipCurve(
+  AnthemObservableList<AutomationPointModel> points, {
+  double clipOffset = 10,
+  double clipStart = 0,
+  double clipEnd = 70,
+  double viewStart = 0,
+  double viewEnd = 100,
+  double canvasWidth = 100,
+  bool correctForClipBounds = true,
+  double normalizedVisualBaseline = 0,
+  (double, double) yDrawPositionPixels = (0, 40),
+}) {
+  final geometry = (
+    lines: LineBuffer(),
+    joins: CoordinateBuffer(),
+    fill: CoordinateBuffer(),
+  );
+  final recorder = ui.PictureRecorder();
+  resetCurrentCurveCacheForTesting();
+  try {
+    renderAutomationCurve(
+      canvas: ui.Canvas(recorder),
+      canvasSize: ui.Size(canvasWidth, 40),
+      xDrawPositionTime: (clipOffset, clipOffset + clipEnd - clipStart),
+      yDrawPositionPixels: yDrawPositionPixels,
+      normalizedVisualBaseline: normalizedVisualBaseline,
+      points: points,
+      strokeWidth: 2,
+      timeViewStart: viewStart,
+      timeViewEnd: viewEnd,
+      clipStart: clipStart,
+      clipEnd: clipEnd,
+      clipOffset: clipOffset,
+      correctForClipBounds: correctForClipBounds,
+      lineBuffer: geometry.lines,
+      lineJoinBuffer: geometry.joins,
+      triCoordBuffer: geometry.fill,
+    );
+  } finally {
+    recorder.endRecording().dispose();
+  }
+  return geometry;
+}
+
+double _lineYAt(LineBuffer lines, double x) {
+  final values = lines.buffer;
+  for (var i = 0; i < values.length; i += 4) {
+    final x1 = values[i];
+    final y1 = values[i + 1];
+    final x2 = values[i + 2];
+    final y2 = values[i + 3];
+    if (x1 <= x && x <= x2 && x2 > x1) {
+      return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+    }
+  }
+  throw StateError('No line contains x=$x');
 }
 
 AnthemObservableList<AutomationPointModel> _makePointModelList(

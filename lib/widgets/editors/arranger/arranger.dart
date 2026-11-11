@@ -22,13 +22,7 @@ import 'dart:async';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/dropdown.dart';
-import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
@@ -40,7 +34,6 @@ import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -50,9 +43,10 @@ import 'package:provider/provider.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
 
-const _timelineHeight = 38.0;
+const _timelineContentHeight = 38.0;
+const _contentBorderThickness = 2.0;
 const _scrollbarShortSideLength = 17.0;
-const _trackHeaderWidth = 190.0;
+const _trackHeaderWidth = TrackLayout.defaultHeaderWidth;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -81,223 +75,71 @@ class _ArrangerState extends State<Arranger> {
           rawKeyHandler: controller.onRawKeyEvent,
           child: Container(
             color: AnthemTheme.panel.background,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Header(),
-                Container(height: 1, color: AnthemTheme.panel.border),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Observer(
-                        builder: (context) {
-                          final editorHeight =
-                              constraints.maxHeight -
-                              _timelineHeight -
-                              _scrollbarShortSideLength;
-                          viewModel.refreshTrackLayout(editorHeight);
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Observer(
+                  builder: (context) {
+                    final editorHeight =
+                        constraints.maxHeight -
+                        _timelineContentHeight -
+                        _contentBorderThickness -
+                        _scrollbarShortSideLength;
+                    viewModel.refreshTrackLayout(editorHeight);
 
-                          // As of writing, the main purpose of this call is to
-                          // allow the state machine to react to certain edge
-                          // cases. For example, when two-finger scrolling on a
-                          // trackpad, the mouse cursor stays still, and so does
-                          // not emit hover events. However, we still want to
-                          // update the editor cursor position, and this call
-                          // enables part of that.
-                          controller.onTrackLayoutChanged();
+                    // As of writing, the main purpose of this call is to allow
+                    // the state machine to react to certain edge cases. For
+                    // example, when two-finger scrolling on a trackpad, the
+                    // mouse cursor stays still, and so does not emit hover
+                    // events. However, we still want to update the editor
+                    // cursor position, and this call enables part of that.
+                    controller.onTrackLayoutChanged();
 
-                          return Row(
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Expanded(child: _ArrangerContent()),
+                        Container(
+                          width: _scrollbarShortSideLength,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: AnthemTheme.panel.border,
+                                width: _contentBorderThickness,
+                              ),
+                            ),
+                          ),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Expanded(child: _ArrangerContent()),
-                              SizedBox(
-                                width: _scrollbarShortSideLength,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Container(
-                                      height: _timelineHeight,
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          left: BorderSide(
-                                            color: AnthemTheme.panel.border,
-                                            width: 1,
-                                          ),
-                                        ),
+                              SizedBox(height: _timelineContentHeight),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: AnthemTheme.panel.border,
+                                        width: _contentBorderThickness,
                                       ),
                                     ),
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            left: BorderSide(
-                                              color: AnthemTheme.panel.border,
-                                              width: 1,
-                                            ),
-                                            top: BorderSide(
-                                              color: AnthemTheme.panel.border,
-                                              width: 1,
-                                            ),
-                                          ),
-                                        ),
-                                        child: _VerticalScrollbar(),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: _scrollbarShortSideLength - 1,
-                                    ),
-                                  ],
+                                  ),
+                                  child: _VerticalScrollbar(),
                                 ),
                               ),
+                              SizedBox(
+                                height:
+                                    _scrollbarShortSideLength -
+                                    _contentBorderThickness,
+                              ),
                             ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModel = Provider.of<ArrangerViewModel>(context);
-    final projectController = Provider.of<ProjectController>(context);
-    final controller = Provider.of<ArrangerController>(context, listen: false);
-    final project = Provider.of<ProjectModel>(context);
-
-    final menuController = AnthemMenuController();
-
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: SizedBox(
-        height: 20,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Menu(
-              menuDef: MenuDef(
-                children: [
-                  AnthemMenuItem(
-                    text: 'New arrangement',
-                    hint: 'Create a new arrangement',
-                    onSelected: () {
-                      projectController.addArrangement();
-                    },
-                  ),
-                  Separator(),
-                  AnthemMenuItem(
-                    text: 'Markers',
-                    submenu: MenuDef(
-                      children: [
-                        AnthemMenuItem(
-                          text: 'Add time signature change',
-                          hint: 'Add a time signature change',
-                          onSelected: () {
-                            controller.addTimeSignatureChange(
-                              timeSignature: TimeSignatureModel(3, 4),
-                              offset: viewModel.timeRange.start.floor(),
-                            );
-                          },
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-              menuController: menuController,
-              child: Button(
-                width: 20,
-                contentPadding: EdgeInsets.all(2),
-                icon: Icons.kebab,
-                onPress: () => menuController.toggle(),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Observer(
-              builder: (context) {
-                return SizedBox(
-                  width: 33,
-                  child: Dropdown(
-                    showNameOnButton: false,
-                    allowNoSelection: false,
-                    hint: 'Change the active tool',
-                    selectedID: EditorTool.values
-                        .firstWhere((tool) => tool.name == viewModel.tool.name)
-                        .name,
-                    items: [
-                      DropdownItem(
-                        id: EditorTool.pencil.name,
-                        name: 'Pencil',
-                        hint:
-                            'Pencil: left click to add clips, right click to delete',
-                        icon: Icons.tools.pencil,
-                      ),
-                      DropdownItem(
-                        id: EditorTool.eraser.name,
-                        name: 'Eraser',
-                        hint: 'Eraser: left click to delete clips',
-                        icon: Icons.tools.erase,
-                      ),
-                      DropdownItem(
-                        id: EditorTool.select.name,
-                        name: 'Select',
-                        hint: 'Select: left click and drag to select clips',
-                        icon: Icons.tools.select,
-                      ),
-                      DropdownItem(
-                        id: EditorTool.cut.name,
-                        name: 'Cut',
-                        hint: 'Cut: left click and drag to cut clips',
-                        icon: Icons.tools.cut,
-                      ),
-                    ],
-                    onChanged: (id) {
-                      viewModel.tool = EditorTool.values.firstWhere(
-                        (tool) => tool.name == id,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 4),
-            Observer(
-              builder: (context) {
-                return Dropdown(
-                  hint: 'Change the active arrangement',
-                  selectedID: project.sequence.activeArrangementID?.toString(),
-                  horizontalExpand: false,
-                  items: project.sequence.arrangementOrder.map<DropdownItem>((
-                    id,
-                  ) {
-                    final name = project.sequence.arrangements[id]!.name;
-                    return DropdownItem(
-                      id: id.toString(),
-                      name: name,
-                      hint: name,
-                    );
-                  }).toList(),
-                  onChanged: (selectedID) {
-                    projectController.setActiveArrangement(
-                      selectedID == null ? null : int.parse(selectedID),
                     );
                   },
                 );
               },
             ),
-            const SizedBox(width: 4),
-          ],
+          ),
         ),
       ),
     );
@@ -317,7 +159,10 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
       height: _scrollbarShortSideLength,
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+          top: BorderSide(
+            color: AnthemTheme.panel.border,
+            width: _contentBorderThickness,
+          ),
         ),
         color: AnthemTheme.panel.background,
       ),
@@ -596,30 +441,28 @@ class _ArrangerContentState extends State<_ArrangerContent>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            // +1 for bottom border drawn by timeline
-            height: _timelineHeight + 1,
+            height: _timelineContentHeight + _contentBorderThickness,
             child: Row(
               children: [
                 Container(
                   width: _trackHeaderWidth,
                   decoration: BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(color: AnthemTheme.panel.border),
+                      bottom: BorderSide(
+                        color: AnthemTheme.panel.border,
+                        width: _contentBorderThickness,
+                      ),
+                      right: BorderSide(color: AnthemTheme.panel.border),
                     ),
                   ),
                 ),
                 Expanded(
-                  child: Observer(
-                    builder: (context) {
-                      return TimelineNotificationHandler(
-                        timelineKind: TimelineKind.arrangement,
-                        arrangementID: project.sequence.activeArrangementID,
-                        child: Timeline.arrangement(
-                          timeRangeAnimation: timeRangeAnimation,
-                          arrangementID: project.sequence.activeArrangementID,
-                        ),
-                      );
-                    },
+                  child: TimelineNotificationHandler(
+                    timelineKind: TimelineKind.arrangement,
+                    child: Timeline.arrangement(
+                      timeRangeAnimation: timeRangeAnimation,
+                      bottomBorderHeight: _contentBorderThickness,
+                    ),
                   ),
                 ),
               ],
@@ -629,8 +472,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
+                Container(
                   width: _trackHeaderWidth,
+                  color: AnthemTheme.panel.border,
+                  foregroundDecoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: AnthemTheme.panel.border),
+                    ),
+                  ),
                   child: AnimatedBuilder(
                     animation: verticalScrollPositionAnimationHelper!
                         .animationController,
@@ -667,7 +516,10 @@ class _ArrangerContentState extends State<_ArrangerContent>
               Container(
                 decoration: BoxDecoration(
                   border: Border(
-                    top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+                    top: BorderSide(
+                      color: AnthemTheme.panel.border,
+                      width: _contentBorderThickness,
+                    ),
                   ),
                 ),
                 width: _trackHeaderWidth,
@@ -703,7 +555,7 @@ class _ArrangerCanvas extends StatelessWidget {
     final renderedViewRepaint = Listenable.merge([
       timeRangeAnimation.controller,
       verticalScrollPositionAnimationController,
-      viewModel.trackPositionCalculator.layoutRevision,
+      viewModel.trackLayout.layoutRevision,
     ]);
 
     return Container(
@@ -717,9 +569,7 @@ class _ArrangerCanvas extends StatelessWidget {
                 child: CustomPaint(
                   painter: ArrangerBackgroundPainter(
                     repaint: renderedViewRepaint,
-                    activeArrangement: project
-                        .sequence
-                        .arrangements[project.sequence.activeArrangementID],
+                    activeArrangement: project.sequence.arrangement,
                     project: project,
                     verticalScrollPositionAnimation:
                         verticalScrollPositionAnimation,
@@ -730,24 +580,13 @@ class _ArrangerCanvas extends StatelessWidget {
             },
           );
 
-          final clipsContainer = Observer(
-            builder: (context) {
-              Widget clips() {
-                return ArrangerContentRenderer(
-                  repaint: renderedViewRepaint,
-                  timeRangeAnimation: timeRangeAnimation,
-                  verticalScrollPositionAnimation:
-                      verticalScrollPositionAnimation,
-                  viewModel: viewModel,
-                );
-              }
-
-              return Positioned.fill(
-                child: project.sequence.activeArrangementID == null
-                    ? const SizedBox()
-                    : clips(),
-              );
-            },
+          final clipsContainer = Positioned.fill(
+            child: ArrangerContentRenderer(
+              repaint: renderedViewRepaint,
+              timeRangeAnimation: timeRangeAnimation,
+              verticalScrollPositionAnimation: verticalScrollPositionAnimation,
+              viewModel: viewModel,
+            ),
           );
 
           final selectionBox = Observer(
@@ -788,7 +627,7 @@ class _ArrangerCanvas extends StatelessWidget {
                 child: PlayheadLine(
                   timeRangeAnimation: timeRangeAnimation,
                   isVisible: true,
-                  editorActiveSequenceId: project.sequence.activeArrangementID,
+                  editorActiveSequenceId: project.sequence.arrangement.id,
                 ),
               );
             },

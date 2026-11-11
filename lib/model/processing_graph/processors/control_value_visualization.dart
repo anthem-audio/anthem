@@ -20,12 +20,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'control_value_visualization.g.dart';
 
@@ -63,21 +63,12 @@ class ControlValueVisualizationProcessorModel
   ) => _$ControlValueVisualizationProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      controlInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: controlInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.control),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    controlInputPortIds: [controlInputPortId],
+  );
 
-  static int get controlInputPortId =>
+  static const int controlInputPortId =
       _ControlValueVisualizationProcessorModel.controlInputPortId;
 
   static String buildVisualizationId({
@@ -90,6 +81,7 @@ class ControlValueVisualizationProcessorModel
 
 abstract class _ControlValueVisualizationProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int controlInputPortId = 0;
 
   Id nodeId;

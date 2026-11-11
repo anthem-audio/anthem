@@ -19,13 +19,27 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/format.dart';
+import 'package:anthem/logic/project_file/gzip.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<Uint8List> encodeProjectJson(Map<String, dynamic> projectJson) async {
+    final output = BytesBuilder(copy: false)..add(projectFileHeader);
+    final jsonBytes = Uint8List.fromList(
+      JsonUtf8Encoder().convert(projectJson),
+    );
+    output.add(await compressGzip(jsonBytes));
+    return output.takeBytes();
+  }
 
   group('project file codec', () {
     test('encodes and decodes a project', () async {
@@ -42,6 +56,17 @@ void main() {
         currentProjectFileSoftwareVersion,
       );
       expect(decodedJson, equals(projectJson));
+    });
+
+    test('rejects an unsupported container header', () async {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final unsupported = await encodeProjectFile(project);
+      unsupported[11] = 99;
+      await expectLater(
+        decodeProjectFileBytes(unsupported),
+        throwsA(isA<InvalidProjectFileException>()),
+      );
     });
 
     test('writes and reads a project file', () async {
@@ -62,12 +87,56 @@ void main() {
       expect(await readProjectFile(path), equals(project.toJson()));
     });
 
+    test('byte and file reads preserve the stored JSON and version', () async {
+      final storedJson = <String, dynamic>{
+        'savedInSoftwareVersion': '0.0.0-prealpha.1',
+        'sequence': {
+          'arrangements': {
+            '42': {'id': 42},
+          },
+          'arrangementOrder': [42],
+        },
+        'unrecognizedField': {'preserved': true},
+      };
+      final bytes = await encodeProjectJson(storedJson);
+      final decodedJson = await decodeProjectFileBytes(bytes);
+      expect(decodedJson, storedJson);
+      expect(decodedJson['savedInSoftwareVersion'], '0.0.0-prealpha.1');
+
+      final directory = await Directory.systemTemp.createTemp(
+        'anthem_project_file_codec_test_',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}project.anthem',
+      );
+      await file.writeAsBytes(bytes);
+      final readJson = await readProjectFile(file.path);
+      expect(readJson, storedJson);
+      expect(readJson['savedInSoftwareVersion'], '0.0.0-prealpha.1');
+      expect(await file.readAsBytes(), bytes);
+    });
+
     test('rejects files without an Anthem project file header', () async {
       final bytes = utf8.encode('{"id":"not-compressed"}');
 
       await expectLater(
         decodeProjectFileBytes(bytes),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<InvalidProjectFileException>()),
+      );
+    });
+
+    test('reports file-system errors separately from invalid files', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'anthem_missing_project_file_test_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final missingPath =
+          '${tempDir.path}${Platform.pathSeparator}missing.anthem';
+
+      await expectLater(
+        readProjectFile(missingPath),
+        throwsA(isA<ProjectFileReadException>()),
       );
     });
   });

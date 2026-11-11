@@ -23,15 +23,12 @@
 // updates for specific data values.
 
 import 'dart:async';
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show
-        VisualizationSubscriptionSpec,
-        VisualizationUpdateEvent,
-        VisualizationValueType;
+    show VisualizationSubscriptionSpec, VisualizationValueType;
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';
@@ -111,24 +108,6 @@ class _IntVisualizationType extends VisualizationType<int> {
   }
 }
 
-class _StringVisualizationType extends VisualizationType<String> {
-  const _StringVisualizationType()
-    : super(wireType: VisualizationValueType.stringValue, defaultValue: '');
-
-  @override
-  String cast(Object value) {
-    if (value is! String) {
-      throw ArgumentError(
-        'Unexpected visualization value type: ${value.runtimeType}. Expected String.',
-      );
-    }
-
-    return value;
-  }
-}
-
 const VisualizationType<double> doubleVisualizationType =
     _DoubleVisualizationType();
 const VisualizationType<int> intVisualizationType = _IntVisualizationType();
-const VisualizationType<String> stringVisualizationType =
-    _StringVisualizationType();

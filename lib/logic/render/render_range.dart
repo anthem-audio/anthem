@@ -32,13 +32,8 @@ class RenderTickRange {
 }
 
 RenderTickRange? activeArrangementContentRenderRange(ProjectModel project) {
-  final arrangementId = project.sequence.activeArrangementID;
-  if (arrangementId == null) {
-    return null;
-  }
-
-  final arrangement = project.sequence.arrangements[arrangementId];
-  if (arrangement == null || arrangement.clips.isEmpty) {
+  final arrangement = project.sequence.arrangement;
+  if (arrangement.clips.isEmpty) {
     return null;
   }
 
@@ -56,13 +51,7 @@ RenderTickRange? activeArrangementContentRenderRange(ProjectModel project) {
 }
 
 RenderTickRange? activeArrangementLoopRenderRange(ProjectModel project) {
-  final arrangementId = project.sequence.activeArrangementID;
-  if (arrangementId == null) {
-    return null;
-  }
-
-  final arrangement = project.sequence.arrangements[arrangementId];
-  final loopPoints = arrangement?.loopPoints;
+  final loopPoints = project.sequence.arrangement.loopPoints;
   if (loopPoints == null) {
     return null;
   }

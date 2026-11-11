@@ -17,47 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
-import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-class _RecordingProcessingGraphApi extends Fake implements ProcessingGraphApi {
-  final calls = <String>[];
-  var publishCallCount = 0;
-  var initializeNodesCallCount = 0;
-  var didInitialize = true;
-  var results = <ProcessingGraphNodeInitializationResult>[];
-  Completer<void>? publishCompleter;
-
-  @override
-  Future<ProcessingGraphNodeInitialization> initializeNodes() async {
-    calls.add('initialize');
-    initializeNodesCallCount++;
-    return ProcessingGraphNodeInitialization(
-      didInitialize: didInitialize,
-      results: results,
-    );
-  }
-
-  @override
-  Future<void> publish() async {
-    calls.add('publish');
-    publishCallCount++;
-
-    final completer = publishCompleter;
-    if (completer != null) {
-      await completer.future;
-    }
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -68,65 +33,18 @@ void main() {
 
   setUp(() {
     project = ProjectModel.create();
+    addTearDown(project.engine.dispose);
     viewModel = ProjectViewModel();
     controller = ProjectController(project, viewModel);
     ServiceRegistry.initializeProject(project);
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
-  });
-
-  group('addArrangement()', () {
-    test('adds a uniquely named arrangement and activates it', () {
-      final originalArrangementIds = project.sequence.arrangementOrder.toList();
-
-      controller.addArrangement();
-
-      expect(project.sequence.arrangementOrder, hasLength(2));
-
-      final newArrangementId = project.sequence.arrangementOrder.last;
-      final newArrangement = project.sequence.arrangements[newArrangementId];
-
-      expect(newArrangementId, isNot(originalArrangementIds.single));
-      expect(newArrangement, isNotNull);
-      expect(newArrangement!.name, equals('Arrangement 2'));
-      expect(project.sequence.activeArrangementID, equals(newArrangementId));
-      expect(
-        project.sequence.activeTransportSequenceID,
-        equals(newArrangementId),
-      );
-    });
-
-    test('uses provided arrangement name', () {
-      controller.addArrangement('Verse');
-
-      final arrangementId = project.sequence.arrangementOrder.last;
-      expect(
-        project.sequence.arrangements[arrangementId]!.name,
-        equals('Verse'),
-      );
-    });
   });
 
   group('editor and transport selection', () {
-    test(
-      'setActiveArrangement updates active arrangement and transport id',
-      () {
-        controller.addArrangement('Verse');
-        final arrangementId = project.sequence.arrangementOrder.last;
-
-        controller.setActiveArrangement(arrangementId);
-
-        expect(project.sequence.activeArrangementID, equals(arrangementId));
-        expect(
-          project.sequence.activeTransportSequenceID,
-          equals(arrangementId),
-        );
-      },
-    );
-
     test('setActivePattern updates active pattern and transport id', () {
       final pattern = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
@@ -178,126 +96,4 @@ void main() {
       expect(project.sequence.activePatternID, isNull);
     });
   });
-
-  group('processing graph', () {
-    test(
-      'publishProcessingGraph initializes nodes before publishing',
-      () async {
-        final processingGraphApi = _RecordingProcessingGraphApi();
-        project.engine.processingGraphApi = processingGraphApi;
-
-        await controller.publishProcessingGraph();
-
-        expect(processingGraphApi.initializeNodesCallCount, equals(1));
-        expect(processingGraphApi.publishCallCount, equals(1));
-        expect(
-          processingGraphApi.calls,
-          orderedEquals(['initialize', 'publish']),
-        );
-      },
-    );
-
-    test(
-      'publishProcessingGraph skips publish when initialization did not run',
-      () async {
-        final processingGraphApi = _RecordingProcessingGraphApi()
-          ..didInitialize = false;
-        project.engine.processingGraphApi = processingGraphApi;
-
-        await controller.publishProcessingGraph();
-
-        expect(processingGraphApi.initializeNodesCallCount, equals(1));
-        expect(processingGraphApi.publishCallCount, equals(0));
-        expect(processingGraphApi.calls, orderedEquals(['initialize']));
-      },
-    );
-
-    test(
-      'publishProcessingGraph coalesces queued publishes while in progress',
-      () async {
-        final processingGraphApi = _RecordingProcessingGraphApi();
-        final publishCompleter = Completer<void>();
-        processingGraphApi.publishCompleter = publishCompleter;
-        project.engine.processingGraphApi = processingGraphApi;
-
-        final firstPublish = controller.publishProcessingGraph();
-        await _flushMicrotasks();
-
-        final secondPublish = controller.publishProcessingGraph();
-        await _flushMicrotasks();
-
-        final thirdPublish = controller.publishProcessingGraph();
-        await _flushMicrotasks();
-
-        expect(
-          processingGraphApi.calls,
-          orderedEquals(['initialize', 'publish']),
-        );
-
-        publishCompleter.complete();
-        processingGraphApi.publishCompleter = null;
-
-        await firstPublish;
-        await secondPublish;
-        await thirdPublish;
-
-        expect(
-          processingGraphApi.calls,
-          orderedEquals(['initialize', 'publish', 'initialize', 'publish']),
-        );
-      },
-    );
-
-    test(
-      'publishProcessingGraph does not mark initialized parameters as touched',
-      () async {
-        final processingGraphApi = _RecordingProcessingGraphApi();
-        final nodeId = project.allocateId();
-        final node = NodeModel(
-          id: nodeId,
-          controlInputPorts: AnthemObservableList.of([
-            NodePortModel(
-              nodeId: nodeId,
-              id: 100,
-              config: NodePortConfigModel(
-                dataType: NodePortDataType.control,
-                parameterConfig: ParameterConfigModel(
-                  id: 100,
-                  defaultValue: 0.5,
-                ),
-              ),
-            ),
-          ]),
-        );
-        final port = node.controlInputPorts.single;
-        project.processingGraph.addNode(node);
-
-        processingGraphApi.results = [
-          ProcessingGraphNodeInitializationResult(
-            nodeId: node.id,
-            success: true,
-            parameterValues: [
-              ProcessingGraphParameterValue(
-                controlPortId: port.id,
-                value: 0.25,
-                displayText: '25%',
-              ),
-            ],
-          ),
-        ];
-        project.engine.processingGraphApi = processingGraphApi;
-
-        await controller.publishProcessingGraph();
-
-        expect(port.parameterValue, equals(0.25));
-        expect(port.parameterDisplayText, equals('25%'));
-        expect(node.lastChangedControlPortId, isNull);
-      },
-    );
-  });
-}
-
-Future<void> _flushMicrotasks() async {
-  await Future<void>.delayed(Duration.zero);
-  await Future<void>.delayed(Duration.zero);
 }

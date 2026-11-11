@@ -24,38 +24,60 @@ import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/controls/parameter_ui_binding.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../helpers/parameter_engine.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('ParameterUiBinding commits parameter changes to undo stack', () {
+  test('ParameterUiBinding follows the node editing policy during state operations', () async {
+    final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
+    addTearDown(() => _disposeProject(project));
+    installParameterTestEngine(project);
+    final binding = ParameterUiBinding(node: node, port: port);
+    expect(binding.canEdit, isTrue);
+    node.beginProcessorStateOperation();
+    expect(binding.canEdit, isFalse);
+    binding.beginChange();
+    binding.updateChange(0.75);
+    await binding.resetToDefault();
+    expect(port.parameterValue, 0.5);
+    expect(port.pendingParameterValue, isNull);
+    node.finishProcessorStateOperation();
+    expect(binding.canEdit, isTrue);
+  });
+
+  test('ParameterUiBinding commits parameter changes to undo stack', () async {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
 
+    installParameterTestEngine(project);
     final binding = ParameterUiBinding(node: node, port: port);
 
     binding.beginChange();
     binding.updateChange(0.75);
-    binding.commitChange();
+    await binding.commitChange();
 
     expect(port.parameterValue, 0.75);
 
-    project.undo();
+    await project.undo();
     expect(port.parameterValue, 0.5);
 
-    project.redo();
+    await project.redo();
     expect(port.parameterValue, 0.75);
   });
 
-  test('ParameterUiBinding maps between UI and parameter values', () {
+  test('ParameterUiBinding maps between UI and parameter values', () async {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
 
+    installParameterTestEngine(project);
     final binding = ParameterUiBinding(
       node: node,
       port: port,
@@ -63,23 +85,77 @@ void main() {
       uiToParameterValue: (double value) => (value + 1) * 0.5,
     );
 
-    expect(binding.uiValue, 0);
-    expect(binding.uiValueForNormalizedParameterValue(0.75), 0.5);
+    expect(binding.displayValue(), 0);
+    expect(binding.displayValue(automatedNormalizedValue: 0.75), 0.5);
 
     binding.beginChange();
     binding.updateChange(1);
-    binding.commitChange();
+    await binding.commitChange();
 
     expect(port.parameterValue, 1);
-    expect(binding.uiValue, 1);
+    expect(binding.displayValue(), 1);
   });
 
-  test('ParameterUiBinding resets mapped parameters to default', () {
+  test(
+    'display values preserve unknown, pending, cached and automated states',
+    () {
+      final (:project, :node, :port) = _createParameterProject(
+        defaultValue: 0.25,
+      );
+      addTearDown(() => _disposeProject(project));
+      final binding = ParameterUiBinding(node: node, port: port);
+
+      port.parameterResetValue = 0.8;
+      port.parameterValue = null;
+      expect(binding.displayValue(), isNull);
+      expect(binding.displayValue(automatedNormalizedValue: 0.9), isNull);
+      expect(binding.missingValueMessage, 'Waiting for engine...');
+
+      port.pendingParameterValue = 0.6;
+      expect(binding.displayValue(), 0.6);
+      expect(binding.missingValueMessage, isNull);
+
+      port.parameterValue = 0.25;
+      port.pendingParameterValue = null;
+      expect(binding.displayValue(), 0.25);
+
+      port.pendingParameterValue = 0.7;
+      expect(binding.displayValue(), 0.7);
+      expect(binding.displayValue(automatedNormalizedValue: 0.9), 0.9);
+      expect(port.parameterValue, 0.25);
+      expect(port.pendingParameterValue, 0.7);
+    },
+  );
+
+  test(
+    'display values clamp normalized inputs before mapping to the UI range',
+    () {
+      final (:project, :node, :port) = _createParameterProject(
+        defaultValue: 0.25,
+      );
+      addTearDown(() => _disposeProject(project));
+      final binding = ParameterUiBinding(
+        node: node,
+        port: port,
+        parameterToUiValue: (value) => value * 2 - 1,
+      );
+
+      port.parameterValue = 1.2;
+      expect(binding.displayValue(), 1);
+      port.pendingParameterValue = -0.2;
+      expect(binding.displayValue(), -1);
+      expect(binding.displayValue(automatedNormalizedValue: 1.2), 1);
+      expect(binding.displayValue(automatedNormalizedValue: -0.2), -1);
+    },
+  );
+
+  test('ParameterUiBinding resets mapped parameters to default', () async {
     final (:project, :node, :port) = _createParameterProject(
       defaultValue: 0.25,
     );
     addTearDown(() => _disposeProject(project));
 
+    installParameterTestEngine(project);
     final binding = ParameterUiBinding(
       node: node,
       port: port,
@@ -89,19 +165,38 @@ void main() {
 
     binding.beginChange();
     binding.updateChange(1);
-    binding.commitChange();
+    await binding.commitChange();
     expect(port.parameterValue, 1);
 
-    binding.resetToDefault();
+    await binding.resetToDefault();
 
     expect(port.parameterValue, 0.25);
-    expect(binding.uiValue, -0.5);
+    expect(binding.displayValue(), -0.5);
 
-    project.undo();
+    await project.undo();
     expect(port.parameterValue, 1);
 
-    project.redo();
+    await project.redo();
     expect(port.parameterValue, 0.25);
+  });
+
+  test('ParameterUiBinding maps a pan visual baseline into the UI domain', () {
+    final (:project, :node, :port) = _createParameterProject(
+      defaultValue: 0.25,
+      displayMode: ParameterDisplayMode.pan,
+      normalizedVisualBaseline: 0.5,
+    );
+    addTearDown(() => _disposeProject(project));
+    expect(ParameterUiBinding(node: node, port: port).uiVisualBaseline, 0.5);
+
+    final mappedBinding = ParameterUiBinding(
+      node: node,
+      port: port,
+      parameterToUiValue: (value) => value * 2 - 1,
+      uiToParameterValue: (value) => (value + 1) * 0.5,
+    );
+    expect(mappedBinding.displayValue(), -0.5);
+    expect(mappedBinding.uiVisualBaseline, 0);
   });
 
   test('ParameterUiBinding resolves automation visualization from lane', () {
@@ -144,7 +239,11 @@ void main() {
 }
 
 ({ProjectModel project, NodeModel node, NodePortModel port})
-_createParameterProject({required double defaultValue}) {
+_createParameterProject({
+  required double defaultValue,
+  ParameterDisplayMode? displayMode,
+  double normalizedVisualBaseline = 0.0,
+}) {
   final project = ProjectModel.create();
   ServiceRegistry.initializeProject(project);
 
@@ -156,12 +255,15 @@ _createParameterProject({required double defaultValue}) {
       dataType: NodePortDataType.control,
       parameterConfig: ParameterConfigModel(
         id: 100,
-        defaultValue: defaultValue,
+        factoryDefaultValue: defaultValue,
+        displayMode: displayMode,
+        normalizedVisualBaseline: normalizedVisualBaseline,
       ),
     ),
   );
   final node = NodeModel(
     id: nodeId,
+    processor: GainProcessorModel(nodeId: nodeId),
     controlInputPorts: AnthemObservableList.of([port]),
   );
 
@@ -170,7 +272,7 @@ _createParameterProject({required double defaultValue}) {
   return (project: project, node: node, port: port);
 }
 
-void _disposeProject(ProjectModel project) {
+Future<void> _disposeProject(ProjectModel project) async {
+  await project.dispose();
   ServiceRegistry.removeProject(project.id);
-  project.dispose();
 }

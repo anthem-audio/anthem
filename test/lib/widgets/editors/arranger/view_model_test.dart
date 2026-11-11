@@ -17,9 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,11 +31,7 @@ void main() {
   ArrangerViewModel createViewModel() {
     final project = createTestProject(includeSequence: false);
 
-    return ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    return ArrangerViewModel(project: project);
   }
 
   group('ArrangerViewModel hitTestContent', () {
@@ -118,5 +116,139 @@ void main() {
       );
       expect(content.automationHandle!.metadata.pointId, 900);
     });
+  });
+
+  test('owns its default time range', () {
+    final firstViewModel = createViewModel();
+    final secondViewModel = createViewModel();
+    final secondStart = secondViewModel.timeRange.start;
+
+    expect(
+      identical(firstViewModel.timeRange, secondViewModel.timeRange),
+      false,
+    );
+
+    firstViewModel.timeRange.start++;
+    expect(secondViewModel.timeRange.start, secondStart);
+  });
+
+  test('group and automation expansion remain independent', () {
+    const groupId = 1;
+    const automationLaneId = 2;
+    const nestedGroupId = 3;
+    const childTrackId = 4;
+    final project = createTestProject(
+      includeSequence: false,
+      tracks: const [
+        TestProjectTrack(
+          id: groupId,
+          name: 'Group',
+          type: TrackType.group,
+          childTracks: [nestedGroupId],
+          automationLanes: [automationLaneId],
+        ),
+        TestProjectTrack(
+          id: automationLaneId,
+          name: 'Automation lane',
+          type: TrackType.automationLane,
+          automationLaneParentTrackId: groupId,
+        ),
+        TestProjectTrack(
+          id: nestedGroupId,
+          name: 'Nested group',
+          type: TrackType.group,
+          childTracks: [childTrackId],
+          parentTrackId: groupId,
+        ),
+        TestProjectTrack(
+          id: childTrackId,
+          name: 'Child',
+          parentTrackId: nestedGroupId,
+        ),
+      ],
+      trackOrder: const [groupId],
+    );
+    final viewModel = ArrangerViewModel(project: project);
+    viewModel.automationExpandedByTrackId[groupId] = true;
+
+    Iterable<Id> visibleTrackIds() => viewModel
+        .getVisibleTrackRows()
+        .whereType<ProjectTrackRow>()
+        .map((row) => row.trackId);
+
+    expect(visibleTrackIds(), [
+      groupId,
+      automationLaneId,
+      nestedGroupId,
+      childTrackId,
+    ]);
+
+    viewModel.setGroupExpanded(nestedGroupId, false);
+    expect(visibleTrackIds(), [groupId, automationLaneId, nestedGroupId]);
+
+    viewModel.setGroupExpanded(groupId, false);
+    expect(visibleTrackIds(), [groupId, automationLaneId]);
+
+    viewModel.setGroupExpanded(groupId, true);
+    expect(visibleTrackIds(), [groupId, automationLaneId, nestedGroupId]);
+    expect(viewModel.isGroupExpanded(nestedGroupId), isFalse);
+  });
+
+  test('real and phantom automation lanes share compact zoom behavior', () {
+    const parentWithLaneId = 1;
+    const automationLaneId = 2;
+    const parentWithPhantomId = 3;
+    final project = createTestProject(
+      includeSequence: false,
+      tracks: const [
+        TestProjectTrack(
+          id: parentWithLaneId,
+          name: 'Track with lane',
+          automationLanes: [automationLaneId],
+        ),
+        TestProjectTrack(
+          id: automationLaneId,
+          name: 'Automation lane',
+          type: TrackType.automationLane,
+          automationLaneParentTrackId: parentWithLaneId,
+        ),
+        TestProjectTrack(
+          id: parentWithPhantomId,
+          name: 'Track with phantom lane',
+        ),
+      ],
+      trackOrder: const [parentWithLaneId, parentWithPhantomId],
+    );
+    final viewModel = ArrangerViewModel(project: project);
+    viewModel.automationExpandedByTrackId[parentWithLaneId] = true;
+    viewModel.automationExpandedByTrackId[parentWithPhantomId] = true;
+
+    final rows = viewModel.getVisibleTrackRows().toList();
+
+    expect(rows.map((row) => row.rowKind), [
+      TrackRowKind.track,
+      TrackRowKind.automationLane,
+      TrackRowKind.track,
+      TrackRowKind.automationLane,
+    ]);
+    expect(rows[1], isA<ProjectTrackRow>());
+    expect(rows[3], isA<PhantomAutomationTrackRow>());
+
+    viewModel.refreshTrackLayout(0);
+    expect(
+      viewModel.trackLayout.rowLayouts.map(
+        (layout) => layout.contentSpan.height,
+      ),
+      [defaultBaseTrackHeight, 42, defaultBaseTrackHeight, 42],
+    );
+
+    viewModel.baseTrackHeight = defaultBaseTrackHeight * 2;
+    viewModel.refreshTrackLayout(0);
+    expect(
+      viewModel.trackLayout.rowLayouts.map(
+        (layout) => layout.contentSpan.height,
+      ),
+      [defaultBaseTrackHeight * 2, 84, defaultBaseTrackHeight * 2, 84],
+    );
   });
 }

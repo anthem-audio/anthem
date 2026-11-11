@@ -19,106 +19,17 @@
 
 #include "modules/core/processing_graph_node_initialization_session.h"
 
+#include "processor_description.h"
+
 #include <exception>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace anthem {
-
-namespace {
-std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationResult(
-    int64_t nodeId,
-    bool success,
-    std::optional<std::string> error = std::nullopt,
-    std::optional<std::shared_ptr<ProcessingGraphNodePortConfiguration>> portConfiguration =
-        std::nullopt) {
-  return std::make_shared<ProcessingGraphNodeInitializationResult>(
-      ProcessingGraphNodeInitializationResult{
-          .nodeId = nodeId,
-          .success = success,
-          .error = std::move(error),
-          .portConfiguration = std::move(portConfiguration),
-          .parameterValues =
-              std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>(),
-      });
-}
-
-std::shared_ptr<ProcessingGraphPortConfiguration> makePortConfiguration(
-    const ProcessorPortConfiguration& portConfiguration) {
-  return std::make_shared<ProcessingGraphPortConfiguration>(ProcessingGraphPortConfiguration{
-      .id = portConfiguration.id,
-      .name = portConfiguration.name,
-      .channelCount = portConfiguration.channelCount,
-      .parameterDefaultValue = portConfiguration.parameterDefaultValue,
-      .parameterDisplayMode = portConfiguration.parameterDisplayMode,
-      .parameterUnitLabel = portConfiguration.parameterUnitLabel,
-  });
-}
-
-std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphPortConfiguration>>>
-makePortConfigurationList(const std::vector<ProcessorPortConfiguration>& portConfigurations) {
-  auto result = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphPortConfiguration>>>();
-  result->reserve(portConfigurations.size());
-
-  for (const auto& portConfiguration : portConfigurations) {
-    result->push_back(makePortConfiguration(portConfiguration));
-  }
-
-  return result;
-}
-
-std::shared_ptr<ProcessingGraphNodePortConfiguration> makeNodePortConfiguration(
-    const ProcessorNodePortConfiguration& portConfiguration) {
-  return std::make_shared<ProcessingGraphNodePortConfiguration>(
-      ProcessingGraphNodePortConfiguration{
-          .audioInputPorts = makePortConfigurationList(portConfiguration.audioInputPorts),
-          .audioOutputPorts = makePortConfigurationList(portConfiguration.audioOutputPorts),
-          .eventInputPorts = makePortConfigurationList(portConfiguration.eventInputPorts),
-          .eventOutputPorts = makePortConfigurationList(portConfiguration.eventOutputPorts),
-          .controlInputPorts = makePortConfigurationList(portConfiguration.controlInputPorts),
-          .controlOutputPorts = makePortConfigurationList(portConfiguration.controlOutputPorts),
-      });
-}
-
-std::shared_ptr<ProcessingGraphParameterValue> makeParameterValue(
-    const ProcessorParameterValue& parameterValue) {
-  return std::make_shared<ProcessingGraphParameterValue>(ProcessingGraphParameterValue{
-      .controlPortId = parameterValue.controlPortId,
-      .value = parameterValue.value,
-      .displayText = parameterValue.displayText,
-  });
-}
-
-std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>> makeParameterValueList(
-    const std::vector<ProcessorParameterValue>& parameterValues) {
-  auto result = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
-  result->reserve(parameterValues.size());
-
-  for (const auto& parameterValue : parameterValues) {
-    result->push_back(makeParameterValue(parameterValue));
-  }
-
-  return result;
-}
-
-std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationResult(
-    int64_t nodeId, const ProcessorPrepareResult& prepareResult) {
-  std::optional<std::shared_ptr<ProcessingGraphNodePortConfiguration>> portConfiguration =
-      std::nullopt;
-
-  if (prepareResult.portConfiguration.has_value()) {
-    portConfiguration = makeNodePortConfiguration(*prepareResult.portConfiguration);
-  }
-
-  auto result = makeNodeInitializationResult(
-      nodeId, prepareResult.success, prepareResult.error, std::move(portConfiguration));
-  result->parameterValues = makeParameterValueList(prepareResult.parameterValues);
-  return result;
-}
-} // namespace
 
 ProcessingGraphNodeInitializationSession::ProcessingGraphNodeInitializationSession(
     Engine& engine, InitializeProcessingGraphNodesCallback complete)
@@ -139,10 +50,7 @@ void ProcessingGraphNodeInitializationSession::pruneInitializedNodeTracker() {
     if (graphNodeIter == graphNodes.end() || initializedNode == nullptr ||
         initializedNode != graphNodeIter->second) {
       if (initializedNode != nullptr) {
-        auto processor = initializedNode->getProcessor();
-        if (processor.has_value()) {
-          processor.value()->isPrepared = false;
-        }
+        initializedNode->getProcessor()->isPrepared = false;
       }
 
       iter = engine.initializedProcessingGraphNodes.erase(iter);
@@ -168,6 +76,10 @@ ProcessingGraphNodeInitializationSession::collectInitializationDiff() {
           nodeId, false, "Processing graph cannot initialize a null node."));
       continue;
     }
+
+    // A live snapshot load owns preparation until its graph is reconciled.
+    if (engine.processorStateStorage.isBusy(nodeId))
+      continue;
 
     auto initializedNodeIter = engine.initializedProcessingGraphNodes.find(nodeId);
     if (initializedNodeIter != engine.initializedProcessingGraphNodes.end() &&
@@ -206,15 +118,6 @@ void ProcessingGraphNodeInitializationSession::markNodeInitialized(
   engine.initializedProcessingGraphNodes[nodeId] = graphNode;
 }
 
-void ProcessingGraphNodeInitializationSession::initializeNodeWithoutProcessor(
-    const NodeInitializationWorkItem& workItem) {
-  // A graph node without a processor has no process preparation step, but it
-  // still participates in delta tracking so it won't be reported as new on
-  // every initialization request.
-  markNodeInitialized(workItem.nodeId, workItem.graphNode);
-  addResult(makeNodeInitializationResult(workItem.nodeId, true));
-}
-
 void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nodeId,
     const std::weak_ptr<Node>& weakGraphNode,
     const std::weak_ptr<Processor>& weakProcessor,
@@ -237,20 +140,76 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
     return;
   }
 
-  if (!prepareResult.has_value()) {
-    processor->isPrepared = true;
-    markNodeInitialized(nodeId, graphNode);
-    addResult(makeNodeInitializationResult(nodeId, true));
-  } else if (prepareResult->success) {
-    processor->isPrepared = true;
-    markNodeInitialized(nodeId, graphNode);
-    addResult(makeNodeInitializationResult(nodeId, *prepareResult));
-  } else {
+  if (prepareResult.has_value() && !prepareResult->success) {
     processor->isPrepared = false;
     addResult(makeNodeInitializationResult(nodeId, *prepareResult));
+    finishPendingNode();
+    return;
+  }
+
+  try {
+    if (!prepareResult || !prepareResult->portConfiguration)
+      throw std::runtime_error("Processor preparation did not supply a port configuration.");
+    processor->reconcileParameters(*prepareResult);
+    if (!processor->hasRestoredProjectState) {
+      if (graphNode->processorStateRetentionId().has_value()) {
+        engine.processorStateStorage.restore(graphNode,
+            processor,
+            [self = shared_from_this(), nodeId, weakGraphNode, weakProcessor](
+                std::optional<std::string> error) {
+              self->completeStateRestoration(
+                  nodeId, weakGraphNode, weakProcessor, std::move(error));
+            });
+        return;
+      }
+      std::map<int64_t, double> initialValues;
+      for (const auto& [id, value] : *graphNode->initialParameterValues())
+        initialValues.emplace(id, value);
+      processor->restoreParameterValues(initialValues);
+      processor->hasRestoredProjectState = true;
+    }
+    prepareResult->parameterValues = processor->getParameterValues();
+    processor->isPrepared = true;
+    markNodeInitialized(nodeId, graphNode);
+    addResult(makeNodeInitializationResult(nodeId, *prepareResult));
+  } catch (const std::exception& error) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, error.what()));
   }
 
   finishPendingNode();
+}
+
+void ProcessingGraphNodeInitializationSession::completeStateRestoration(int64_t nodeId,
+    const std::weak_ptr<Node>& weakGraphNode,
+    const std::weak_ptr<Processor>& weakProcessor,
+    std::optional<std::string> error) {
+  auto node = weakGraphNode.lock();
+  auto processor = weakProcessor.lock();
+  if (!isStillCurrentGraphNode(nodeId, node) || processor == nullptr) {
+    completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::nullopt);
+    return;
+  }
+  if (error) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, std::move(error)));
+    finishPendingNode();
+    return;
+  }
+
+  processor->hasRestoredProjectState = true;
+  // Restored state can change the bus layout. Report ports and values only
+  // after the plugin has been prepared again with its saved state applied.
+  try {
+    processor->prepareToProcess([self = shared_from_this(), nodeId, weakGraphNode, weakProcessor](
+                                    std::optional<ProcessorPrepareResult> result) {
+      self->completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::move(result));
+    });
+  } catch (const std::exception& exception) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, exception.what()));
+    finishPendingNode();
+  }
 }
 
 void ProcessingGraphNodeInitializationSession::initializeProcessorNode(
@@ -284,13 +243,7 @@ void ProcessingGraphNodeInitializationSession::initializeProcessorNode(
 
 void ProcessingGraphNodeInitializationSession::initializeNode(
     const NodeInitializationWorkItem& workItem) {
-  auto processor = workItem.graphNode->getProcessor();
-  if (!processor.has_value()) {
-    initializeNodeWithoutProcessor(workItem);
-    return;
-  }
-
-  initializeProcessorNode(workItem, processor.value());
+  initializeProcessorNode(workItem, workItem.graphNode->getProcessor());
 }
 
 void ProcessingGraphNodeInitializationSession::initializeDiff(

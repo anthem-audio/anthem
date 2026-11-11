@@ -42,53 +42,23 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   rt_audioBuffersToClear = std::move(bufferBindings.rt_audioBuffersToClear);
   rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
 
-  rt_connectedInputControlPorts.reserve(inputControlBuffers.size());
-  for (const auto& [portId, bufferIndex] : inputControlBuffers) {
-    if (!bufferIndex.has_value()) {
+  const auto processor = graphNode->getProcessor();
+  for (const auto& port : *graphNode->controlInputPorts()) {
+    if (!port->isAvailable() || !port->config()->parameterConfig())
       continue;
-    }
-
-    rt_connectedInputControlPorts.push_back(ConnectedInputControlPort{
-        .portId = portId,
-        .bufferIndex = *bufferIndex,
-    });
-  }
-
-  inputParameters.reserve(graphNode->controlInputPorts()->size());
-
-  for (auto& port : *graphNode->controlInputPorts()) {
-    auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
-    auto& parameterConfig = port->config()->parameterConfig();
-
-    if (!parameterConfig.has_value()) {
-      continue;
-    }
-
-    InputParameterBinding state;
-    state.portId = port->id();
-    state.value = std::make_unique<std::atomic<float>>(parameterValue);
-    inputParameters.push_back(std::move(state));
+    const auto parameter = processor->getParameter(port->id());
+    if (!parameter)
+      throw std::runtime_error("Processor has no base value for a confirmed parameter.");
+    const auto buffer = inputControlBuffers.find(port->id());
+    inputParameters.push_back({.portId = port->id(),
+        .parameter = parameter,
+        .controlBufferIndex = buffer == inputControlBuffers.end() ? std::nullopt : buffer->second});
   }
 }
 
 void NodeProcessContext::cleanup() {
   // Intentionally empty. The graph context owns the underlying storage and
   // everything else is managed with RAII.
-}
-
-NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputParameterBinding(
-    int64_t id) {
-  auto it = std::find_if(inputParameters.begin(),
-      inputParameters.end(),
-      [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
-
-  if (it == inputParameters.end()) {
-    throw std::runtime_error(
-        "AnthemNodeProcessContext could not find input parameter binding for port ID " +
-        std::to_string(id) + ".");
-  }
-
-  return *it;
 }
 
 const NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputParameterBinding(
@@ -106,18 +76,13 @@ const NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputPa
   return *it;
 }
 
-void NodeProcessContext::setParameterValue(int64_t id, float value) {
-  // Throw if not on the JUCE message thread
-  if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
-    throw std::runtime_error(
-        "AnthemNodeProcessContext::setParameterValue() must be called on the JUCE message thread.");
-  }
-
-  findInputParameterBinding(id).value->store(value);
+float NodeProcessContext::getParameterValue(int64_t id) const {
+  return findInputParameterBinding(id).parameter->value.load(std::memory_order_relaxed);
 }
 
-float NodeProcessContext::getParameterValue(int64_t id) const {
-  return findInputParameterBinding(id).value->load();
+void NodeProcessContext::rt_updateParameterControl() {
+  for (const auto& binding : inputParameters)
+    binding.parameter->rt_setControlled(binding.controlBufferIndex.has_value());
 }
 
 void NodeProcessContext::clearBuffers() {
@@ -131,6 +96,15 @@ void NodeProcessContext::clearBuffers() {
   for (const auto bufferIndex : rt_eventBuffersToClear) {
     graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
+}
+
+void NodeProcessContext::rt_clearOutputs() {
+  for (const auto& [_, slice] : outputAudioBuffers)
+    graphProcessContext->rt_getAudioBufferView(slice).clear();
+  for (const auto& [_, index] : outputControlBuffers)
+    graphProcessContext->rt_getControlBufferView(index).clear();
+  for (const auto& [_, index] : outputEventBuffers)
+    graphProcessContext->getEventBuffer(index)->clear();
 }
 
 size_t NodeProcessContext::getBufferIndex(
@@ -191,17 +165,21 @@ bool NodeProcessContext::hasAudioProcessBuffer() const {
 }
 
 NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal(int64_t id) const {
-  auto bufferIndex = inputControlBuffers.at(id);
-  if (bufferIndex.has_value()) {
-    return InputControlSignal{
-        .rt_buffer = graphProcessContext->rt_getControlBufferView(*bufferIndex),
-        .rt_hasBuffer = true,
-    };
-  }
+  const auto parameter = std::find_if(inputParameters.begin(),
+      inputParameters.end(),
+      [id](const auto& binding) { return binding.portId == id; });
+  if (parameter != inputParameters.end())
+    return rt_getInputParameterSignal(*parameter);
+  const auto buffer = getInputControlBuffer(id);
+  return {.rt_buffer = buffer, .rt_hasBuffer = buffer.isValid()};
+}
 
-  return InputControlSignal{
-      .parameterValue = getParameterValue(id),
-  };
+NodeProcessContext::InputControlSignal NodeProcessContext::rt_getInputParameterSignal(
+    const InputParameterBinding& binding) const {
+  if (binding.controlBufferIndex)
+    return {.rt_buffer = graphProcessContext->rt_getControlBufferView(*binding.controlBufferIndex),
+        .rt_hasBuffer = true};
+  return {.parameterValue = binding.parameter->value.load(std::memory_order_relaxed)};
 }
 
 AudioBufferView NodeProcessContext::getInputControlBuffer(int64_t id) const {

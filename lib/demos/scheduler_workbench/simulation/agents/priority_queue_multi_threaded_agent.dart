@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 
@@ -326,7 +327,7 @@ class PriorityQueueMultiThreadedAgent extends SimulationAgent {
 
     final startTime = _runStartTime ?? 0;
     final endTime = simulation.completedAtTime ?? simulation.time;
-    final runTicks = (endTime - startTime).clamp(0, 1 << 62);
+    final runTicks = math.max(0, endTime - startTime);
     final totalBusyTicks = _workers.fold<int>(
       0,
       (sum, worker) => sum + worker.busyTicks,
@@ -395,7 +396,7 @@ class _PriorityQueueWorker {
 
       await node.process();
     } finally {
-      busyTicks += (agent.simulation.time - startTime).clamp(0, 1 << 62);
+      busyTicks += math.max(0, agent.simulation.time - startTime);
 
       if (node.processingState == NodeProcessingState.completed) {
         processedNodeCount++;

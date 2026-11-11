@@ -28,6 +28,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import 'controller/timeline_controller.dart';
+import 'controller/timeline_interaction_target.dart';
 import 'controller/state_machine/timeline_state_machine.dart'
     show TimelineLoopHandle;
 import '../scroll_manager.dart';
@@ -40,22 +41,27 @@ export 'timeline_constants.dart';
 
 /// Draws the timeline for editors.
 class Timeline extends StatefulWidget {
-  final Id? arrangementID;
-  final Id? patternID;
+  final TimelineInteractionTarget interactionTarget;
 
   final TimeRangeAnimation timeRangeAnimation;
 
-  const Timeline.pattern({
+  /// Height of the border painted along the bottom of the timeline.
+  final double bottomBorderHeight;
+
+  Timeline.pattern({
     super.key,
     required this.timeRangeAnimation,
-    required this.patternID,
-  }) : arrangementID = null;
+    required Id? patternID,
+    this.bottomBorderHeight = 1,
+  }) : assert(bottomBorderHeight >= 0),
+       interactionTarget = TimelineInteractionTarget.pattern(patternID);
 
   const Timeline.arrangement({
     super.key,
     required this.timeRangeAnimation,
-    required this.arrangementID,
-  }) : patternID = null;
+    this.bottomBorderHeight = 1,
+  }) : assert(bottomBorderHeight >= 0),
+       interactionTarget = const TimelineInteractionTarget.arrangement();
 
   @override
   State<Timeline> createState() => _TimelineState();
@@ -134,8 +140,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   TimelineController _createController() {
     return TimelineController(
       project: Provider.of<ProjectModel>(context, listen: false),
-      arrangementID: widget.arrangementID,
-      patternID: widget.patternID,
+      interactionTarget: widget.interactionTarget,
     );
   }
 
@@ -168,8 +173,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
     if (!forceRecreate && existingController != null) {
       final doesControllerTargetMatchWidget =
-          existingController.arrangementID == widget.arrangementID &&
-          existingController.patternID == widget.patternID;
+          existingController.interactionTarget == widget.interactionTarget;
 
       if (doesControllerTargetMatchWidget) {
         return;
@@ -208,8 +212,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     }
 
     final didTargetChange =
-        oldWidget.arrangementID != widget.arrangementID ||
-        oldWidget.patternID != widget.patternID;
+        oldWidget.interactionTarget != widget.interactionTarget;
     if (didTargetChange) {
       _syncControllerLifecycle(forceRecreate: true);
     }
@@ -254,7 +257,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     assert(
       _requiredController.sequenceId ==
-          (widget.arrangementID ?? widget.patternID),
+          widget.interactionTarget.sequenceId(
+            Provider.of<ProjectModel>(context, listen: false),
+          ),
     );
 
     return LayoutBuilder(
@@ -291,6 +296,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                   project.sequence.defaultTimeSignature,
                               timeSignatureChanges: controller
                                   .timeSignatureChanges(),
+                              bottomBorderHeight: widget.bottomBorderHeight,
                             ),
                           );
                         },
@@ -383,9 +389,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
                           return Visibility(
                             visible:
-                                activeSequenceId != null &&
-                                (widget.patternID == activeSequenceId ||
-                                    widget.arrangementID == activeSequenceId),
+                                _requiredController.sequenceId != null &&
+                                activeSequenceId ==
+                                    _requiredController.sequenceId,
                             child: PlayheadPositioner(
                               isStartMarker: true,
                               playheadTimeOverride: project
@@ -440,9 +446,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
                           return Visibility(
                             visible:
-                                activeSequenceId != null &&
-                                (widget.patternID == activeSequenceId ||
-                                    widget.arrangementID == activeSequenceId),
+                                _requiredController.sequenceId != null &&
+                                activeSequenceId ==
+                                    _requiredController.sequenceId,
                             child: PlayheadPositioner(
                               playheadTimeOverride:
                                   project.engineState == EngineState.running

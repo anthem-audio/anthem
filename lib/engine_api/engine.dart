@@ -19,50 +19,67 @@
 
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/commands/parameter_commands.dart';
-import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/logic/project_engine_event_handler.dart';
+import 'package:anthem/logic/project_engine_request_handler.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/render_api.dart';
 part 'api/sequencer_api.dart';
 part 'api/visualization_api.dart';
+part 'engine_audio_session.dart';
 
-enum EngineState { stopped, starting, running }
+final _log = Logger('engine');
+
+enum EngineState {
+  /// No engine session is active, and cleanup has finished.
+  stopped,
+
+  /// The engine is connecting and initializing its project state.
+  starting,
+
+  /// Startup has completed and ordinary requests can be sent.
+  running,
+
+  /// The session has ended; shutdown and process cleanup are still in progress.
+  stopping,
+}
 
 var _engineIdGenerator = 0;
 
-typedef EngineConnectorFactory =
-    EngineConnectorBase Function(
-      int id, {
-      required bool kDebugMode,
-      void Function(Response)? onReply,
-      void Function()? onExit,
-      bool noHeartbeat,
-      String? enginePathOverride,
-    });
+typedef EngineConnectorFactory = EngineConnectorBase Function(
+  int id, {
+  required bool kDebugMode,
+  void Function(IpcMessage)? onMessage,
+  void Function()? onExit,
+  void Function()? onConnectionClosed,
+  bool noHeartbeat,
+  String? enginePathOverride,
+});
 
 EngineConnectorBase _defaultEngineConnectorFactory(
   int id, {
   required bool kDebugMode,
-  void Function(Response)? onReply,
+  void Function(IpcMessage)? onMessage,
   void Function()? onExit,
+  void Function()? onConnectionClosed,
   bool noHeartbeat = false,
   String? enginePathOverride,
 }) => EngineConnector(
   id,
   kDebugMode: kDebugMode,
-  onReply: onReply,
+  onMessage: onMessage,
   onExit: onExit,
+  onConnectionClosed: onConnectionClosed,
   noHeartbeat: noHeartbeat,
   enginePathOverride: enginePathOverride,
 );
@@ -86,7 +103,7 @@ enum StartupSendBehavior {
   /// mislead the caller, such as "read current engine state" operations.
   requireRunning,
 
-  /// Ignore the request while the engine is starting or stopped.
+  /// Ignore the request whenever the engine is not running.
   ///
   /// This is for ephemeral actions that should not be replayed later, such as
   /// live input events.
@@ -124,22 +141,26 @@ class _PendingReply {
   });
 }
 
-class _PluginParameterGestureSession {
-  final double oldValue;
-
-  const _PluginParameterGestureSession({required this.oldValue});
-}
-
 /// Engine class, used for communicating with the Anthem engine process.
 ///
 /// This class manages the low-level IPC connection between the UI and engine
 /// processes and presents a higher-level async API to the rest of the UI.
 class Engine {
   int id;
-  late EngineConnectorBase _engineConnector;
+  EngineConnectorBase? _connector;
+  EngineConnectorBase get _engineConnector => _connector!;
+  Future<void>? _stopFuture;
+  Future<void>? _disposeFuture;
+  int _sessionGeneration = 0;
+  Completer<void> _sessionEnded = Completer<void>()..complete();
+
+  int? get processId => _connector?.processId;
+  int? get processExitCode => _connector?.processExitCode;
 
   /// The project that this engine is attached to
   ProjectModel project;
+
+  late final EngineAudioSession _audioSession;
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
@@ -148,26 +169,28 @@ class Engine {
   late VisualizationApi visualizationApi;
 
   final Map<int, _PendingReply> _replyFunctions = {};
-  final Map<(Id, int), _PluginParameterGestureSession>
-  _pluginParameterGestureSessions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
   final StreamController<EngineState> _engineStateStreamController =
       StreamController.broadcast();
-  final StreamController<String?> _audioSessionInvalidatedStreamController =
-      StreamController.broadcast();
-  final StreamController<Response> _renderEventStreamController =
-      StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
-  late final Stream<String?> audioSessionInvalidatedStream;
-  late final Stream<Response> renderEventStream;
+  Stream<String?> get audioSessionInvalidatedStream =>
+      _audioSession.invalidatedStream;
+  Stream<IpcEvent> get renderEventStream => renderApi.events;
   Completer<void> _readyForMessagesCompleter = Completer<void>();
 
   EngineState _engineState = EngineState.stopped;
 
   /// The engine's current lifecycle state.
   EngineState get engineState => _engineState;
+
+  /// Completes when this session enters [EngineState.stopping].
+  ///
+  /// Retain the returned future for work belonging to the current session.
+  /// Starting the engine again creates a new future; the previous one stays
+  /// completed. Before the first start, this future is already complete.
+  Future<void> get sessionEnded => _sessionEnded.future;
 
   /// Returns whether the engine has completed startup and is ready for request
   /// traffic.
@@ -188,19 +211,15 @@ class Engine {
   /// Returns whether request traffic is currently held during render.
   bool get areRequestsHeldForRender => _renderRequestHoldCount > 0;
 
-  bool _isAudioReady = false;
-  AudioProcessingConfigDto? _audioConfig;
-
   /// Returns whether the engine's audio thread has finished starting.
-  bool get isAudioReady => _isAudioReady;
+  bool get isAudioReady => _audioSession.isReady;
 
   /// The engine's current audio device configuration.
   ///
   /// Returns `null` whenever the current config is not valid, including while
   /// the engine is stopped, while startup is still in progress, or after the
   /// audio device has been torn down.
-  AudioProcessingConfigDto? get audioConfig =>
-      _engineState == EngineState.running ? _audioConfig : null;
+  AudioProcessingConfigDto? get audioConfig => _audioSession.config;
 
   /// Returns a [Future] that completes when the engine is ready to receive
   /// messages.
@@ -229,6 +248,8 @@ class Engine {
 
   final String? enginePathOverride;
   final EngineConnectorFactory _engineConnectorFactory;
+  final ProjectEngineRequestHandler _requestHandler;
+  final ProjectEngineEventHandler _eventHandler;
 
   /// Attaches no-op completion handlers so a future cannot surface as an
   /// unhandled async error.
@@ -332,17 +353,25 @@ class Engine {
   }
 
   void _setEngineState(EngineState state) {
+    if (state == _engineState) return;
+    assert(switch ((_engineState, state)) {
+      (EngineState.stopped, EngineState.starting) ||
+      (EngineState.starting, EngineState.running) ||
+      (EngineState.starting, EngineState.stopping) ||
+      (EngineState.running, EngineState.stopping) ||
+      (EngineState.stopping, EngineState.stopped) => true,
+      _ => false,
+    });
     _engineState = state;
+    _audioSession._handleEngineStateChanged(state);
 
     if (state == EngineState.running &&
         !_readyForMessagesCompleter.isCompleted) {
       _readyForMessagesCompleter.complete();
     }
 
-    if (state == EngineState.stopped) {
-      _socketReady = false;
-      _isAudioReady = false;
-      _audioConfig = null;
+    if (state == EngineState.stopping) {
+      _sessionEnded.complete();
       _clearStartupQueue(
         StateError('Engine stopped before startup completed.'),
       );
@@ -352,34 +381,18 @@ class Engine {
       _failPendingReplies(
         StateError('Engine stopped while waiting for reply.'),
       );
-      _pluginParameterGestureSessions.clear();
+      _eventHandler.handleEngineStopped();
 
       if (_readyForMessagesCompleter.isCompleted) {
         _readyForMessagesCompleter = Completer<void>();
       }
     }
+    if (state == EngineState.stopped) {
+      _socketReady = false;
+    }
 
     if (!_engineStateStreamController.isClosed) {
       _engineStateStreamController.add(state);
-    }
-  }
-
-  void _setAudioReady(AudioProcessingConfigDto audioConfig) {
-    _audioConfig = audioConfig;
-    _isAudioReady = true;
-  }
-
-  void _markAudioStopped() {
-    _audioConfig = null;
-    _isAudioReady = false;
-  }
-
-  void _markAudioSessionInvalidated(String? reason) {
-    _audioConfig = null;
-    _isAudioReady = false;
-
-    if (!_audioSessionInvalidatedStreamController.isClosed) {
-      _audioSessionInvalidatedStreamController.add(reason);
     }
   }
 
@@ -389,11 +402,11 @@ class Engine {
     this.enginePathOverride,
     EngineConnectorFactory? engineConnectorFactory,
   }) : _engineConnectorFactory =
-           engineConnectorFactory ?? _defaultEngineConnectorFactory {
+           engineConnectorFactory ?? _defaultEngineConnectorFactory,
+       _requestHandler = ProjectEngineRequestHandler(project),
+       _eventHandler = ProjectEngineEventHandler(project) {
+    _audioSession = EngineAudioSession(this);
     engineStateStream = _engineStateStreamController.stream;
-    audioSessionInvalidatedStream =
-        _audioSessionInvalidatedStreamController.stream;
-    renderEventStream = _renderEventStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
@@ -402,373 +415,240 @@ class Engine {
     visualizationApi = VisualizationApi(this);
   }
 
-  void _scheduleNodeStateUpdate(Id nodeId) {
-    project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
-  }
+  /// Adopts a file retention explicitly handed to the UI in an engine response.
+  /// The engine must no longer use or release the supplied token. Its session
+  /// scope protects the file until adoption or session cleanup. Adoption creates
+  /// a caller-owned retention and releases that temporary session claim.
+  /// The caller must dispose the returned retention when finished.
+  Future<({String relativePath, AssetRetention retention})>
+  adoptReturnedFileRetention(String token) =>
+      _requestHandler.adoptReturnedFileRetention(token);
 
-  NodePortModel? _findPluginParameterPort(NodeModel node, int controlPortId) {
-    for (final port in node.controlInputPorts) {
-      if (port.id == controlPortId && port.config.parameterConfig != null) {
-        return port;
+  /// Clears unfinished plugin gestures before replacing a processor's state.
+  void discardProcessorGestures(Id nodeId) =>
+      _eventHandler.discardProcessorGestures(nodeId);
+
+  void _onMessage(IpcMessage message) {
+    if (message is Request) {
+      if (_engineState == EngineState.stopping) {
+        _engineConnector.sendMessage(
+          RequestErrorResponse(
+            id: message.id,
+            code: RequestErrorCode.failed,
+            message: 'Engine session is stopping.',
+          ),
+        );
+        return;
       }
-    }
-
-    return null;
-  }
-
-  void _applyPluginParameterValue(
-    NodeModel node,
-    int controlPortId,
-    double rawValue,
-    String? displayText, {
-    required bool markTouched,
-  }) {
-    final value = rawValue.clamp(0.0, 1.0).toDouble();
-    final port = _findPluginParameterPort(node, controlPortId);
-
-    if (port == null) {
-      return;
-    }
-
-    if (markTouched) {
-      node.touchControlInputParameter(port);
-    }
-
-    if (port.parameterValue != value) {
-      port.parameterValue = value;
-    }
-
-    if (port.parameterDisplayText != displayText) {
-      port.parameterDisplayText = displayText;
+      unawaited(_handleRequestFromEngine(message));
+    } else if (message is Response) {
+      _onResponse(message);
+    } else if (message is IpcEvent &&
+        (_engineState == EngineState.starting || isRunning)) {
+      _onEvent(message);
     }
   }
 
-  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
-    _applyPluginParameterValue(
-      node,
-      event.controlPortId,
-      event.value,
-      event.displayText,
-      markTouched: true,
-    );
-
-    _scheduleNodeStateUpdate(event.nodeId);
-  }
-
-  void _handlePluginParameterGesture(PluginParameterGestureEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
-    final port = _findPluginParameterPort(node, event.controlPortId);
-    if (port == null) {
-      return;
-    }
-
-    final key = (event.nodeId, event.controlPortId);
-
-    if (event.isStarting) {
-      node.touchControlInputParameter(port);
-      _pluginParameterGestureSessions[key] = _PluginParameterGestureSession(
-        oldValue: SetParameterValueCommand.effectiveParameterValue(port),
+  Future<void> _handleRequestFromEngine(Request request) async {
+    // Keep replies on this connection if the engine restarts while handling
+    // the request.
+    final connector = _engineConnector;
+    final session = _sessionEnded;
+    Response response;
+    try {
+      response = await _requestHandler.handleRequest(
+        request,
+        sessionEnded: session.future,
       );
-      return;
-    }
-
-    final session = _pluginParameterGestureSessions.remove(key);
-    if (session == null) {
-      return;
-    }
-
-    final newValue = SetParameterValueCommand.effectiveParameterValue(port);
-    if (session.oldValue == newValue) {
-      return;
-    }
-
-    project.push(
-      SetParameterValueCommand(
-        nodeId: event.nodeId,
-        controlPortId: event.controlPortId,
-        oldValue: session.oldValue,
-        newValue: newValue,
-      ),
-    );
-  }
-
-  void _handlePluginParameterSnapshot(PluginParameterSnapshotEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
-    for (final parameterValue in event.parameterValues) {
-      _applyPluginParameterValue(
-        node,
-        parameterValue.controlPortId,
-        parameterValue.value,
-        parameterValue.displayText,
-        markTouched: false,
+      if (response.id != request.id) {
+        throw StateError(
+          'Response ID ${response.id} does not match request ID ${request.id}.',
+        );
+      }
+    } catch (error, stackTrace) {
+      _log.warning(
+        'Failed to handle engine request ${request.runtimeType}.',
+        error,
+        stackTrace,
+      );
+      response = RequestErrorResponse(
+        id: request.id,
+        code: error is UnsupportedError
+            ? RequestErrorCode.unsupported
+            : RequestErrorCode.failed,
+        message: error.toString(),
       );
     }
+
+    if (!session.isCompleted) connector.sendMessage(response);
   }
 
-  void _applyResponseState(Response response) {
-    switch (response) {
-      case StartAudioResponse e when e.success && e.audioConfig != null:
-        _setAudioReady(e.audioConfig!);
-        return;
-      case StartRenderAudioSessionResponse e
-          when e.success && e.audioConfig != null:
-        _setAudioReady(e.audioConfig!);
-        return;
-      case StopAudioResponse e when e.success:
-        _markAudioStopped();
-        return;
-      default:
-        return;
-    }
-  }
-
-  void _onReply(Response response) {
-    switch (response) {
-      case VisualizationUpdateEvent e:
-        project.visualizationProvider.processVisualizationUpdate(e);
-        return;
-      case AudioReadyEvent e:
-        _setAudioReady(e.audioConfig);
-        return;
-      case AudioSessionInvalidatedEvent e:
-        _markAudioSessionInvalidated(e.reason);
-        return;
-      case RenderStartedEvent e:
-        if (!_renderEventStreamController.isClosed) {
-          _renderEventStreamController.add(e);
-        }
-        return;
-      case RenderProgressEvent e:
-        if (!_renderEventStreamController.isClosed) {
-          _renderEventStreamController.add(e);
-        }
-        return;
-      case RenderCompletedEvent e:
-        if (!_renderEventStreamController.isClosed) {
-          _renderEventStreamController.add(e);
-        }
-        return;
-      case RenderFailedEvent e:
-        if (!_renderEventStreamController.isClosed) {
-          _renderEventStreamController.add(e);
-        }
-        return;
-      case PluginChangedEvent e:
-        _scheduleNodeStateUpdate(e.nodeId);
-        return;
-      case PluginParameterChangedEvent e:
-        _handlePluginParameterChanged(e);
-        return;
-      case PluginParameterGestureEvent e:
-        _handlePluginParameterGesture(e);
-        return;
-      case PluginParameterSnapshotEvent e:
-        _handlePluginParameterSnapshot(e);
-        return;
-      case PluginLoadedEvent e:
-        final node = project.processingGraph.nodes[e.nodeId];
-        if (node == null) {
-          return;
-        }
-
-        final completer = node.pluginLoadedCompleter;
-
-        // This shouldn't happen, but we can't risk throwing here so safety first
-        if (completer.isCompleted) return;
-
-        completer.complete();
-        return;
-      default:
-        break;
+  void _onResponse(Response response) {
+    if (response is HeartbeatReply) {
+      _engineConnector.acknowledgeHeartbeat();
+      return;
     }
 
     final pendingReply = _replyFunctions.remove(response.id);
     if (pendingReply != null) {
-      _applyResponseState(response);
+      _audioSession._handleResponse(response);
       pendingReply.onReply(response);
       pendingReply.timeoutTimer?.cancel();
     }
   }
 
-  void _onExit() {
-    _setEngineState(EngineState.stopped);
+  void _onEvent(IpcEvent event) {
+    if (_audioSession._handleEvent(event)) return;
+    if (renderApi._handleEvent(event)) return;
+    _eventHandler.handleEvent(event);
   }
 
-  Future<void> _exit() async {
-    final request = Exit(id: _getRequestId());
-    await _request(request, bypassRenderRequestHold: true);
-
-    _engineConnector.dispose();
-
-    _setEngineState(EngineState.stopped);
-  }
-
-  Future<void> dispose() async {
-    await stop();
-
-    _engineStateStreamController.close();
-    _audioSessionInvalidatedStreamController.close();
-    _renderEventStreamController.close();
-  }
-
-  /// Stops the engine process, if it is running.
-  Future<void> stop() async {
-    if (_engineState == EngineState.running) {
-      await _exit();
+  void _onConnectionClosed(int sessionGeneration) {
+    if (sessionGeneration != _sessionGeneration ||
+        _engineState == EngineState.stopped) {
       return;
     }
+    _socketReady = false;
+    _failPendingReplies(
+      StateError('Engine connection closed before replying.'),
+    );
+    unawaited(
+      stop().catchError((Object error, StackTrace stackTrace) {
+        _log.warning('Engine $id cleanup failed.', error, stackTrace);
+      }),
+    );
+  }
 
-    if (_engineState == EngineState.starting) {
-      _engineConnector.dispose();
-      _setEngineState(EngineState.stopped);
+  /// Stops the engine and releases its resources.
+  ///
+  /// Cleanup failures can be retried by calling dispose again. The engine cannot
+  /// restart once disposal has begun.
+  Future<void> dispose() => _disposeFuture ??= _dispose().catchError((
+    Object error,
+    StackTrace stack,
+  ) {
+    _disposeFuture = null;
+    Error.throwWithStackTrace(error, stack);
+  });
+
+  Future<void> _dispose() async {
+    try {
+      await stop();
+    } finally {
+      _engineStateStreamController.close();
+      _audioSession._dispose();
+      renderApi._dispose();
     }
   }
 
-  Future<AudioProcessingConfigDto> _startAudio({
-    required StartupSendBehavior startupBehavior,
-    bool bypassRenderRequestHold = false,
-  }) async {
-    final audioStartReply =
-        await _request(
-              StartAudioRequest(id: _getRequestId()),
-              startupBehavior: startupBehavior,
-              bypassRenderRequestHold: bypassRenderRequestHold,
-              // Audio device initialization can block behind OS permission
-              // prompts, such as the first-run microphone access prompt on
-              // macOS.
-              timeout: null,
-            )
-            as StartAudioResponse;
-    if (!audioStartReply.success) {
-      throw StateError(
-        'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
-      );
-    }
-    if (audioStartReply.audioConfig == null) {
-      throw StateError(
-        'Engine audio startup failed: audio config was not provided.',
-      );
-    }
+  /// Ends the current session and waits for process cleanup to finish.
+  Future<void> stop() {
+    final existing = _stopFuture;
+    if (existing != null) return existing;
+    if (_engineState == EngineState.stopped) return Future.value();
 
-    return audioStartReply.audioConfig!;
+    final sendExit = isRunning && _socketReady;
+    _setEngineState(EngineState.stopping);
+    // Install the stop future before shutdown can report connection closure.
+    return _stopFuture = Future<void>.microtask(() => _stop(sendExit: sendExit))
+        .whenComplete(() => _stopFuture = null);
+  }
+
+  Future<void> _stop({required bool sendExit}) async {
+    final connector = _connector;
+    if (connector != null) {
+      if (sendExit && _socketReady) {
+        try {
+          // Exit is the only request dispatched after entering stopping.
+          await _dispatchRequestWithReply(Exit(id: connector.getRequestId()));
+        } catch (error, stackTrace) {
+          _log.warning(
+            'Engine $id did not acknowledge exit.',
+            error,
+            stackTrace,
+          );
+        }
+      }
+      try {
+        await connector.shutdown();
+      } catch (_) {
+        // Shutdown can report that a forced termination was necessary even
+        // after confirming the process has exited.
+        if (connector.processExitCode != null) {
+          await _requestHandler.closeFileScope();
+          _setEngineState(EngineState.stopped);
+        }
+        rethrow;
+      }
+    }
+    await _requestHandler.closeFileScope();
+    _setEngineState(EngineState.stopped);
   }
 
   /// Starts the audio thread without restarting the engine process.
-  Future<AudioProcessingConfigDto> startAudio() async {
-    if (_engineState != EngineState.running) {
-      throw StateError('Engine must be running to start audio.');
-    }
+  Future<AudioProcessingConfigDto> startAudio() => _audioSession.start();
 
-    if (_audioConfig != null) {
-      return _audioConfig!;
-    }
-
-    return _startAudio(startupBehavior: StartupSendBehavior.requireRunning);
-  }
-
-  Future<AudioProcessingConfigDto> startAudioForRender() async {
-    if (_engineState != EngineState.running) {
-      throw StateError('Engine must be running to start audio.');
-    }
-
-    if (_audioConfig != null) {
-      return _audioConfig!;
-    }
-
-    return _startAudio(
-      startupBehavior: StartupSendBehavior.requireRunning,
-      bypassRenderRequestHold: true,
-    );
-  }
+  Future<AudioProcessingConfigDto> startAudioForRender() =>
+      _audioSession.start(bypassRenderRequestHold: true);
 
   /// Stops the audio thread without stopping the engine process.
-  Future<void> stopAudio() async {
-    await _stopAudio();
-  }
+  Future<void> stopAudio() => _audioSession.stop();
 
-  Future<void> stopAudioForRender() async {
-    await _stopAudio(bypassRenderRequestHold: true);
-  }
+  Future<void> stopAudioForRender() =>
+      _audioSession.stop(bypassRenderRequestHold: true);
 
-  Future<void> _stopAudio({bool bypassRenderRequestHold = false}) async {
-    if (_engineState != EngineState.running) {
-      return;
-    }
-
-    final stopAudioReply =
-        await _request(
-              StopAudioRequest(id: _getRequestId()),
-              bypassRenderRequestHold: bypassRenderRequestHold,
-            )
-            as StopAudioResponse;
-
-    if (!stopAudioReply.success) {
-      throw StateError(
-        'Engine audio shutdown failed: ${stopAudioReply.error ?? 'Unknown error.'}',
-      );
-    }
-  }
+  bool _isStartingSession(int generation) =>
+      generation == _sessionGeneration && _engineState == EngineState.starting;
 
   /// Starts the engine process, and attaches to it.
   Future<void> start({bool initializeAudio = true}) async {
-    if (_engineState != EngineState.stopped) {
-      return;
+    if (_disposeFuture != null || _engineStateStreamController.isClosed) {
+      throw StateError('Engine $id is disposed.');
     }
+    final stopping = _stopFuture;
+    if (stopping != null) await stopping;
+    if (_disposeFuture != null || _engineStateStreamController.isClosed) {
+      throw StateError('Engine $id is disposed.');
+    }
+    if (_engineState != EngineState.stopped) return;
 
-    _audioConfig = null;
-    _isAudioReady = false;
-
+    final generation = ++_sessionGeneration;
+    _sessionEnded = Completer<void>();
     _setEngineState(EngineState.starting);
 
-    _engineConnector = _engineConnectorFactory(
-      id,
-      kDebugMode: kDebugMode,
-      onReply: _onReply,
-      onExit: _onExit,
-      enginePathOverride: enginePathOverride,
-    );
-
-    final modelInitFuture = project.initializeEngine();
-    _consumeFutureError(modelInitFuture);
-
-    final success = await _engineConnector.onInit;
-
-    if (_engineState != EngineState.starting) {
-      return;
-    }
-
-    if (!success) {
-      _setEngineState(EngineState.stopped);
-      return;
-    }
-
-    _socketReady = true;
-
     try {
-      final response =
-          await _request(
-                EngineReadyCheckRequest(id: _getRequestId()),
-                startupBehavior: StartupSendBehavior.bypassStartupQueue,
-              )
-              as EngineReadyCheckResponse;
+      _connector = _engineConnectorFactory(
+        id,
+        kDebugMode: kDebugMode,
+        onMessage: _onMessage,
+        onExit: () => _onConnectionClosed(generation),
+        onConnectionClosed: () => _onConnectionClosed(generation),
+        enginePathOverride: enginePathOverride,
+      );
+      _engineConnector.onVisualizationRecord =
+          project.visualizationProvider.processVisualizationRecord;
+
+      final modelInitFuture = project.initializeEngine();
+      _consumeFutureError(modelInitFuture);
+      final success = await _engineConnector.onInit;
+      if (!_isStartingSession(generation)) return;
+      if (!success) {
+        await stop();
+        return;
+      }
+      _socketReady = true;
+
+      final response = await _request(
+        EngineReadyCheckRequest(id: _getRequestId()),
+        startupBehavior: StartupSendBehavior.bypassStartupQueue,
+      ) as EngineReadyCheckResponse;
+      if (!_isStartingSession(generation)) return;
       if (!response.success) {
         throw StateError(
           'Engine startup handshake failed: ${response.error ?? 'Unknown error.'}',
         );
       }
+      _engineConnector.finalizeVisualizationSharedMemorySetup();
 
       _canFlushStartupQueue = true;
       if (_startupQueue.isEmpty ||
@@ -780,60 +660,44 @@ class Engine {
       _flushStartupQueue(maxRequests: 1);
 
       final didInitializeProject = await modelInitFuture;
+      if (!_isStartingSession(generation)) return;
       if (!didInitializeProject.success) {
         throw StateError(
           'Engine model init failed: ${didInitializeProject.error ?? 'Unknown error.'}',
         );
       }
-
       if (initializeAudio) {
-        await _startAudio(
+        await _audioSession._start(
           startupBehavior: StartupSendBehavior.bypassStartupQueue,
         );
       }
-
+      if (!_isStartingSession(generation)) return;
       _autoFlushStartupQueue = true;
       _flushStartupQueue();
-    } catch (e, st) {
-      if (_engineState != EngineState.starting) {
-        return;
+    } catch (error, stackTrace) {
+      if (!_isStartingSession(generation)) return;
+      _log.severe('Engine $id startup handshake failed.', error, stackTrace);
+      await stop();
+      return;
+    } finally {
+      // A cancelled startup finishes only after its session has been cleaned up.
+      final stopping = _stopFuture;
+      if (generation == _sessionGeneration && stopping != null) {
+        await stopping;
       }
-
-      debugPrint('Engine[$id]: startup handshake failed: $e');
-      debugPrint('$st');
-      _engineConnector.dispose();
-      _setEngineState(EngineState.stopped);
-      return;
     }
 
-    if (_engineState != EngineState.starting) {
-      return;
-    }
-
+    if (!_isStartingSession(generation)) return;
     _setEngineState(EngineState.running);
 
-    // We don't do this on web, and on web the engine won't listen for it.
-    //
-    // On desktop, we use the heartbeat mechanism to make sure that, if
-    // something goes very wrong, the engine will eventually time out and exit
-    // itself in the worst case.
-    //
-    // This isn't necessary on web, but on web our timer is also throttled when
-    // the browser tab is not active, so it trips a heartbeat timeout under
-    // regular use. Since it doesn't work (without modification) and we don't
-    // need it anyway, we disable it on web.
+    // Browser timers are throttled in background tabs. Desktop processes use
+    // heartbeats to detect a failed UI; the in-process web engine does not.
     if (!_engineConnector.noHeartbeat && !kIsWeb) {
       _engineConnector.startHeartbeatTimer();
     }
-
     for (final callback in _startupCallbacks) {
       callback();
     }
-  }
-
-  void _sendRequest(Request request) {
-    final encoder = JsonUtf8Encoder();
-    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
   }
 
   Future<Response> _dispatchRequestWithReply(
@@ -868,13 +732,13 @@ class Engine {
       timeoutTimer: timer,
     );
 
-    _sendRequest(request);
+    _engineConnector.sendMessage(request);
 
     return completer.future;
   }
 
   void _dispatchRequestNoReply(Request request) {
-    _sendRequest(request);
+    _engineConnector.sendMessage(request);
   }
 
   void _queueStartupRequest(
@@ -936,6 +800,11 @@ class Engine {
     bool bypassRenderRequestHold = false,
     Duration? timeout = const Duration(seconds: 5),
   }) {
+    if (_engineState == EngineState.stopping &&
+        startupBehavior != StartupSendBehavior.dropDuringStartup) {
+      throw StateError('Engine is stopping.');
+    }
+
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
       final completer = Completer<Response>();
@@ -988,6 +857,11 @@ class Engine {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
     bool bypassRenderRequestHold = false,
   }) {
+    if (_engineState == EngineState.stopping &&
+        startupBehavior != StartupSendBehavior.dropDuringStartup) {
+      throw StateError('Engine is stopping.');
+    }
+
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
       _queueStartupRequest(request);

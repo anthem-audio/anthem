@@ -133,14 +133,13 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
     });
   }
 
-  void onShortcut(LogicalKeySet shortcut) {
-    shortcutManager.handleShortcut(shortcut);
+  bool onShortcut(LogicalKeySet shortcut) {
+    return shortcutManager.handleShortcut(shortcut);
   }
 
   bool _isArrangerPanelActive() {
-    final projectViewModel = ServiceRegistry.forProject(
-      viewModel.projectId,
-    ).projectViewModel;
+    final projectViewModel = ServiceRegistry.forProject(viewModel.projectId)
+        .projectViewModel;
 
     return projectViewModel.activePanel == PanelKind.arranger;
   }

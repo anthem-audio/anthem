@@ -54,20 +54,18 @@ void _removeTimeSignatureChangeFromPattern({
 
 void _addTimeSignatureChangeToArrangement({
   required ProjectModel project,
-  required Id arrangementID,
   required TimeSignatureChangeModel change,
 }) {
-  final arrangement = project.sequence.arrangements[arrangementID]!;
+  final arrangement = project.sequence.arrangement;
   arrangement.timeSignatureChanges.add(change);
   _sortTimeSignatureChanges(arrangement.timeSignatureChanges);
 }
 
 void _removeTimeSignatureChangeFromArrangement({
   required ProjectModel project,
-  required Id arrangementID,
   required Id changeID,
 }) {
-  final arrangement = project.sequence.arrangements[arrangementID]!;
+  final arrangement = project.sequence.arrangement;
   final change = arrangement.timeSignatureChanges.firstWhere(
     (change) => change.id == changeID,
   );
@@ -79,13 +77,12 @@ List<TimeSignatureChangeModel> _getChangeList({
   required ProjectModel project,
   required TimelineKind timelineKind,
   Id? patternID,
-  Id? arrangementID,
 }) {
   return switch (timelineKind) {
     TimelineKind.pattern =>
       project.sequence.patterns[patternID]!.timeSignatureChanges,
     TimelineKind.arrangement =>
-      project.sequence.arrangements[arrangementID]!.timeSignatureChanges,
+      project.sequence.arrangement.timeSignatureChanges,
   };
 }
 
@@ -96,13 +93,11 @@ void _sortTimeSignatureChanges(List<TimeSignatureChangeModel> changes) {
 class AddTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
   Id? patternID;
-  Id? arrangementID;
   TimeSignatureChangeModel change;
 
   AddTimeSignatureChangeCommand({
     required this.timelineKind,
     this.patternID,
-    this.arrangementID,
     required this.change,
   });
 
@@ -115,11 +110,7 @@ class AddTimeSignatureChangeCommand extends Command {
         change: change,
       );
     } else {
-      _addTimeSignatureChangeToArrangement(
-        project: project,
-        arrangementID: arrangementID!,
-        change: change,
-      );
+      _addTimeSignatureChangeToArrangement(project: project, change: change);
     }
   }
 
@@ -134,7 +125,6 @@ class AddTimeSignatureChangeCommand extends Command {
     } else {
       _removeTimeSignatureChangeFromArrangement(
         project: project,
-        arrangementID: arrangementID!,
         changeID: change.id,
       );
     }
@@ -144,25 +134,21 @@ class AddTimeSignatureChangeCommand extends Command {
 class RemoveTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
   Id? patternID;
-  Id? arrangementID;
   late TimeSignatureChangeModel change;
 
   RemoveTimeSignatureChangeCommand({
     required this.timelineKind,
     required ProjectModel project,
     this.patternID,
-    this.arrangementID,
     required Id changeID,
   }) {
     if (timelineKind == TimelineKind.pattern) {
       change = project.sequence.patterns[patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == changeID);
     } else {
-      change = project
-          .sequence
-          .arrangements[arrangementID]!
-          .timeSignatureChanges
-          .firstWhere((change) => change.id == changeID);
+      change = project.sequence.arrangement.timeSignatureChanges.firstWhere(
+        (change) => change.id == changeID,
+      );
     }
   }
 
@@ -177,7 +163,6 @@ class RemoveTimeSignatureChangeCommand extends Command {
     } else {
       _removeTimeSignatureChangeFromArrangement(
         project: project,
-        arrangementID: arrangementID!,
         changeID: change.id,
       );
     }
@@ -192,11 +177,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
         change: change,
       );
     } else {
-      _addTimeSignatureChangeToArrangement(
-        project: project,
-        arrangementID: arrangementID!,
-        change: change,
-      );
+      _addTimeSignatureChangeToArrangement(project: project, change: change);
     }
   }
 }
@@ -204,7 +185,6 @@ class RemoveTimeSignatureChangeCommand extends Command {
 class MoveTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
   Id? patternID;
-  Id? arrangementID;
   late List<TimeSignatureChangeModel> changeList;
   late TimeSignatureChangeModel change;
   late Time oldOffset;
@@ -214,7 +194,6 @@ class MoveTimeSignatureChangeCommand extends Command {
     required ProjectModel project,
     required this.timelineKind,
     this.patternID,
-    this.arrangementID,
     required Id changeID,
     Time? oldOffset,
     required this.newOffset,
@@ -223,7 +202,6 @@ class MoveTimeSignatureChangeCommand extends Command {
       project: project,
       timelineKind: timelineKind,
       patternID: patternID,
-      arrangementID: arrangementID,
     );
     change = changeList.firstWhere((change) => change.id == changeID);
     this.oldOffset = oldOffset ?? change.offset;
@@ -243,35 +221,23 @@ class MoveTimeSignatureChangeCommand extends Command {
 }
 
 class SetTimeSignatureNumeratorCommand extends Command {
-  late TimelineKind timelineKind;
+  TimelineKind timelineKind;
   Id? patternID;
-  Id? arrangementID;
   late TimeSignatureChangeModel change;
   late int oldNumerator;
   int numerator;
 
   SetTimeSignatureNumeratorCommand({
     required ProjectModel project,
+    required this.timelineKind,
     this.patternID,
-    this.arrangementID,
     required Id changeID,
     required this.numerator,
   }) {
-    if (patternID != null) {
-      timelineKind = TimelineKind.pattern;
-    } else if (arrangementID != null) {
-      timelineKind = TimelineKind.arrangement;
-    } else {
-      throw ArgumentError(
-        'Arguments should specify a pattern ID or arrangement ID, but neither was specified.',
-      );
-    }
-
     change = _getChangeList(
       project: project,
       timelineKind: timelineKind,
       patternID: patternID,
-      arrangementID: arrangementID,
     ).firstWhere((change) => change.id == changeID);
 
     oldNumerator = change.timeSignature.numerator;
@@ -289,35 +255,23 @@ class SetTimeSignatureNumeratorCommand extends Command {
 }
 
 class SetTimeSignatureDenominatorCommand extends Command {
-  late TimelineKind timelineKind;
+  TimelineKind timelineKind;
   Id? patternID;
-  Id? arrangementID;
   late TimeSignatureChangeModel change;
   late int oldDenominator;
   int denominator;
 
   SetTimeSignatureDenominatorCommand({
     required ProjectModel project,
+    required this.timelineKind,
     this.patternID,
-    this.arrangementID,
     required Id changeID,
     required this.denominator,
   }) {
-    if (patternID != null) {
-      timelineKind = TimelineKind.pattern;
-    } else if (arrangementID != null) {
-      timelineKind = TimelineKind.arrangement;
-    } else {
-      throw ArgumentError(
-        'Arguments should specify a pattern ID or arrangement ID, but neither was specified.',
-      );
-    }
-
     change = _getChangeList(
       project: project,
       timelineKind: timelineKind,
       patternID: patternID,
-      arrangementID: arrangementID,
     ).firstWhere((change) => change.id == changeID);
 
     oldDenominator = change.timeSignature.denominator;

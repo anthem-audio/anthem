@@ -50,6 +50,20 @@ For generated `fromJson(...)`, codegen expects one of:
 
 Using `.uninitialized()` is the common pattern for non-trivial models. A zero-argument constructor is required for JSON deserialization, where the class is created first and then populated with values.
 
+### Write-once fields
+
+Use an uninitialized `late final` field when a model reference must remain fixed
+for the model's lifetime. Generated `fromJson` assigns the field once, so the
+`.uninitialized()` constructor must leave it unset. Ordinary constructors must
+initialize it before the model is attached or serialized. Fields without setters,
+including non-`late` final fields and initialized `late final` fields, are skipped.
+
+Generated setters perform the backing assignment before attachment, model change
+notifications, or MobX notifications. Dart rejects a second assignment before
+those effects occur. The child model can still change and forward descendant
+updates normally. This is a Dart ownership constraint; C++ model generation and
+nested synchronization otherwise work as usual.
+
 ### Top-level model setup
 
 The root project model (`ProjectModel`) must be marked at runtime as the top-level, and its children must be attached manually after construction/deserialization:
@@ -179,7 +193,9 @@ These collections are critical to change detection for model syncing, so they mu
 
 ### Constants are supported
 
-Generation only includes mutable fields that can be set during deserialization/sync. Fields without setters are skipped, except static-const primitive constants, which are treated as model constants.
+Generation includes fields with setters, including uninitialized `late final` fields that can be populated during deserialization. Fields without setters are skipped, except static-const primitive constants, which are treated as model constants.
+
+Declare these constants in the private model class, such as `_GainProcessorModel`. The public Dart class can expose `static const` aliases, since Dart static members are not inherited. C++ behavior classes inherit the generated constants from their model base class.
 
 For an example of how these constants are used, see the const IDs defined in [`gain.dart`](/lib/model/processing_graph/processors/gain.dart):
 

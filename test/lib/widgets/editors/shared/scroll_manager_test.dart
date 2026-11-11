@@ -382,7 +382,8 @@ void main() {
       await fixture.sendScroll(
         tester,
         position: fixture.center(tester),
-        scrollDelta: const Offset(0, 24),
+        // Browsers translate shift-wheel input to horizontal wheel deltas.
+        scrollDelta: kIsWeb ? const Offset(24, 0) : const Offset(0, 24),
       );
 
       expect(fixture.scrollDelta, equals(0));
@@ -401,7 +402,7 @@ void main() {
 
       expect(fixture.scrollDelta, equals(0));
       expect(fixture.zoomEvent, isNotNull);
-      expect(fixture.zoomEvent!.$2, closeTo(-0.12, 0.000001));
+      expect(fixture.zoomEvent!.$2, closeTo(kIsWeb ? 0.24 : -0.12, 0.000001));
     });
   });
 
@@ -574,11 +575,11 @@ void main() {
       await fixture.sendScroll(
         tester,
         position: fixture.center(tester),
-        scrollDelta: const Offset(0, 1000),
+        scrollDelta: kIsWeb ? const Offset(1000, 0) : const Offset(0, 1000),
       );
 
-      expect(fixture.timeRange.start, closeTo(2500, 0.000001));
-      expect(fixture.timeRange.end, closeTo(3000, 0.000001));
+      expect(fixture.timeRange.start, closeTo(kIsWeb ? 5000 : 2500, 0.000001));
+      expect(fixture.timeRange.end, closeTo(kIsWeb ? 5500 : 3000, 0.000001));
     });
 
     testWidgets('limits horizontal scroll before tick zero', (tester) async {
@@ -593,7 +594,7 @@ void main() {
       await fixture.sendScroll(
         tester,
         position: fixture.center(tester),
-        scrollDelta: const Offset(0, -1000),
+        scrollDelta: kIsWeb ? const Offset(-1000, 0) : const Offset(0, -1000),
       );
 
       expect(fixture.timeRange.start, closeTo(0, 0.000001));

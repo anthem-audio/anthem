@@ -24,6 +24,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
+import 'package:collection/collection.dart';
 import 'package:source_gen/source_gen.dart';
 
 import '../util/codegen_dependency_tracker.dart';
@@ -336,7 +337,13 @@ class CppModelBuilder implements Builder {
         var foundMatch = false;
         outer:
         for (final modelClassInfo in classesProcessed) {
-          for (final field in modelClassInfo.fields.values) {
+          // Concrete sealed subtypes can reference models from other libraries.
+          // Those fields need imports just like fields on the annotated base.
+          for (final field in modelClassInfo.fields.values.followedBy(
+            modelClassInfo.sealedSubclasses
+                .map((subtype) => subtype.fields.values)
+                .flattened,
+          )) {
             // Recursively checks if the given type uses any type that comes from
             // imported library that we're currently checking.
             bool typeMatches(ModelType type) {
@@ -808,6 +815,9 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
 
   for (final subtype in modelClassInfo.sealedSubclasses) {
     forwardDeclarations.add('struct ${subtype.name};');
+    // A nested annotated sealed class generates its own concrete structs.
+    // Ancestor unions refer to those structs without declaring them twice.
+    if (subtype.cppOwner != modelClassInfo.annotatedClass) continue;
     writer.writeLine('struct ${subtype.name} {');
     writer.incrementWhitespace();
 
@@ -827,9 +837,13 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     final baseClassName = modelClassInfo.annotatedClass.name!;
     final baseFieldName =
         baseClassName[0].toLowerCase() + baseClassName.substring(1);
-    writer.writeLine(
-      'rfl::Flatten<${baseClassName}Base> ${baseFieldName}Base;',
-    );
+    if (modelClassInfo.fields.values.any(
+      (field) => !field.isModelConstant && !_shouldSkip(field.fieldElement),
+    )) {
+      writer.writeLine(
+        'rfl::Flatten<${baseClassName}Base> ${baseFieldName}Base;',
+      );
+    }
 
     writer.decrementWhitespace();
     writer.writeLine('};');

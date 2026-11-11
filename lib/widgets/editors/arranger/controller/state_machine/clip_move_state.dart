@@ -114,7 +114,6 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangement = arrangementData.arrangement;
     final arrangementClips = arrangementData.clips;
     final clipTimingOverrides =
         viewModel.clipTimingOverrides.nonObservableInner;
@@ -144,9 +143,7 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       return;
     }
 
-    project.execute(
-      MoveClipsCommand(arrangementID: arrangement.id, clipMoves: clipMoves),
-    );
+    project.execute(MoveClipsCommand(clipMoves: clipMoves));
   }
 
   void _commitDuplicatedMoveSession() {
@@ -156,7 +153,6 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangement = arrangementData.arrangement;
     final previewClips = viewModel.previewClips.nonObservableInner;
     final clipsToCommit = duplicatedClipBatch.clips
         .where((clip) => previewClips.containsKey(clip.id))
@@ -180,9 +176,7 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       project.execute(PatternAddRemoveCommand.add(pattern: pattern));
     }
     for (final clip in clipsToCommit) {
-      project.execute(
-        ClipAddRemoveCommand.add(arrangementID: arrangement.id, clip: clip),
-      );
+      project.execute(ClipAddRemoveCommand.add(clip: clip));
     }
     project.commitUndoGroup();
   }

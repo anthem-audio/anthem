@@ -18,6 +18,7 @@
 */
 
 import 'dart:math';
+
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/button_group.dart';
@@ -28,7 +29,7 @@ import 'package:flutter/widgets.dart';
 
 import 'icon.dart';
 
-enum ButtonVariant { main, label, ghost }
+enum ButtonVariant { main, label, ghost, outline }
 
 class ButtonThemeColors {
   final Color idle;
@@ -64,6 +65,30 @@ class ButtonTheme {
     required this.border,
     required this.content,
   });
+
+  /// Overrides colors for the untoggled states of this theme.
+  ButtonTheme withColors({
+    Color? background,
+    Color? backgroundHover,
+    Color? backgroundPress,
+    Color? foreground,
+  }) => ButtonTheme(
+    background: ButtonThemeColors(
+      idle: background ?? this.background.idle,
+      hover: backgroundHover ?? this.background.hover,
+      press: backgroundPress ?? this.background.press,
+      toggleActive: this.background.toggleActive,
+    ),
+    border: border,
+    content: foreground == null
+        ? content
+        : ButtonThemeColors(
+            idle: foreground,
+            hover: foreground,
+            press: foreground,
+            toggleActive: content.toggleActive,
+          ),
+  );
 }
 
 final _textColors = ButtonThemeColors(
@@ -106,8 +131,18 @@ final buttonGhostTheme = ButtonTheme(
   border: ButtonThemeColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
-
 @visibleForTesting
+final buttonOutlineTheme = ButtonTheme(
+  background: const ButtonThemeColors.all(Color(0x00000000)),
+  border: ButtonThemeColors(
+    idle: const Color(0xFF696969),
+    hover: const Color(0xFF737373),
+    press: const Color(0xFF595959),
+    toggleActive: AnthemTheme.primary.main,
+  ),
+  content: _textColors,
+);
+
 ButtonTheme getButtonTheme(ButtonVariant variant) {
   switch (variant) {
     case ButtonVariant.main:
@@ -116,11 +151,14 @@ ButtonTheme getButtonTheme(ButtonVariant variant) {
       return buttonLabelTheme;
     case ButtonVariant.ghost:
       return buttonGhostTheme;
+    case ButtonVariant.outline:
+      return buttonOutlineTheme;
   }
 }
 
 class Button extends StatefulWidget {
   final ButtonVariant? variant;
+  final ButtonTheme? theme;
 
   final String? text;
   final IconDef? icon;
@@ -139,12 +177,14 @@ class Button extends StatefulWidget {
   final Color? backgroundPress;
   final Color? backgroundToggleActive;
   final bool? hideBorder;
+  final bool borderMatchesContent;
   final BorderRadius? borderRadius;
 
   final void Function()? onPress;
   final void Function()? onRightClick;
   final bool? toggleState;
   final bool consumePress;
+  final bool interactable;
 
   final List<HintSection>? hint;
   @visibleForTesting
@@ -153,6 +193,7 @@ class Button extends StatefulWidget {
   const Button({
     super.key,
     this.variant,
+    this.theme,
     this.text,
     this.icon,
     this.contentBuilder,
@@ -166,11 +207,13 @@ class Button extends StatefulWidget {
     this.backgroundPress,
     this.backgroundToggleActive,
     this.hideBorder,
+    this.borderMatchesContent = false,
     this.borderRadius,
     this.onPress,
     this.onRightClick,
     this.toggleState,
     this.consumePress = false,
+    this.interactable = true,
     this.hint,
     this.hintStoreOverride,
   });
@@ -201,6 +244,17 @@ class _ButtonState extends State<Button> {
   @override
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    if (!widget.interactable) {
+      hovered = false;
+      pressed = false;
+      if (hintId != null) {
+        _hintStore.removeHint(hintId!);
+        hintId = null;
+      }
+      return;
+    }
+
     if (hovered && oldWidget.hint != widget.hint) {
       if (hintId != null) {
         _hintStore.removeHint(hintId!);
@@ -217,8 +271,7 @@ class _ButtonState extends State<Button> {
   @override
   Widget build(BuildContext context) {
     final groupStyle = context.watch<ButtonGroupChildStyle?>();
-    final variant = widget.variant ?? ButtonVariant.main;
-    final theme = getButtonTheme(variant);
+    final theme = widget.theme ?? getButtonTheme(widget.variant ?? .main);
 
     final toggled = (widget.toggleState ?? false);
 
@@ -241,6 +294,9 @@ class _ButtonState extends State<Button> {
     }
 
     final contentColor = theme.content.getColor(hovered, pressed, toggled);
+    final borderColor = widget.borderMatchesContent
+        ? contentColor
+        : theme.border.getColor(hovered, pressed, toggled);
 
     Widget? buttonContent;
 
@@ -289,6 +345,29 @@ class _ButtonState extends State<Button> {
         groupStyle?.borderRadius ??
         BorderRadius.circular(4);
 
+    final buttonVisual = SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: effectiveBorderRadius,
+          border: effectiveHideBorder == true
+              ? null
+              : Border.all(color: borderColor),
+          color: background,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(1),
+          child: Stack(
+            fit: widget.expand != null ? StackFit.expand : StackFit.passthrough,
+            children: stackChildren,
+          ),
+        ),
+      ),
+    );
+
+    if (!widget.interactable) return buttonVisual;
+
     return MouseRegion(
       onEnter: (e) {
         if (!mounted) return;
@@ -335,28 +414,7 @@ class _ButtonState extends State<Button> {
               pressed = false;
             });
           },
-          child: Container(
-            width: widget.width,
-            height: widget.height,
-            decoration: BoxDecoration(
-              borderRadius: effectiveBorderRadius,
-              border: effectiveHideBorder == true
-                  ? null
-                  : Border.all(
-                      color: theme.border.getColor(hovered, pressed, toggled),
-                    ),
-              color: background,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(1),
-              child: Stack(
-                fit: widget.expand != null
-                    ? StackFit.expand
-                    : StackFit.passthrough,
-                children: stackChildren,
-              ),
-            ),
-          ),
+          child: buttonVisual,
         ),
       ),
     );

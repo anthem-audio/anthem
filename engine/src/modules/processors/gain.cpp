@@ -19,7 +19,10 @@
 
 #include "gain.h"
 
+#include "modules/core/engine.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
+
+#include <utility>
 
 namespace anthem {
 
@@ -29,14 +32,49 @@ GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
 GainProcessor::~GainProcessor() {}
 
 void GainProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  const auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
+  if (!audioProcessingConfig.has_value()) {
+    complete(ProcessorPrepareResult{
+        .success = false,
+        .error = std::string("No audio processing config is active."),
+    });
+    return;
+  }
+
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioInputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+      .audioOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioOutputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+      .controlInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = gainPortId,
+                  .parameterDefaultValue = kGainParameterZeroDbNormalized,
+                  .parameterDisplayMode = "gainDb",
+                  .parameterUnitLabel = "dB",
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void GainProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
-  auto audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(GainProcessor::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(GainProcessor::audioOutputPortId);
 
-  auto amplitudeControl = context.getInputControlSignal(GainProcessorModelBase::gainPortId);
+  auto amplitudeControl = context.getInputControlSignal(GainProcessor::gainPortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
     auto paramValue = amplitudeControl.getSample(sample);

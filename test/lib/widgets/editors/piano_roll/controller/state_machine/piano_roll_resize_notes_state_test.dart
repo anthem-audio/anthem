@@ -33,27 +33,24 @@ void main() {
   });
 
   group('resize interactions', () {
-    test(
-      'resize on an unselected note clears the selection and only resizes that note',
-      () {
-        final selectedNote = fixture.addNote(key: 60, offset: 100, length: 96);
-        final resizedNote = fixture.addNote(key: 64, offset: 220, length: 96);
-        fixture.selectNotes([selectedNote.id]);
+    test('resize on an unselected note clears the selection and only resizes that note', () {
+      final selectedNote = fixture.addNote(key: 60, offset: 100, length: 96);
+      final resizedNote = fixture.addNote(key: 64, offset: 220, length: 96);
+      fixture.selectNotes([selectedNote.id]);
 
-        fixture.pointerDown(
-          key: 64.5,
-          offset: 316,
-          noteUnderCursor: resizedNote.id,
-          isResize: true,
-        );
-        fixture.pointerMove(key: 64.5, offset: 360, alt: true);
-        fixture.pointerUp(key: 64.5, offset: 360, alt: true);
+      fixture.pointerDown(
+        key: 64.5,
+        offset: 316,
+        noteUnderCursor: resizedNote.id,
+        isResize: true,
+      );
+      fixture.pointerMove(key: 64.5, offset: 360, alt: true);
+      fixture.pointerUp(key: 64.5, offset: 360, alt: true);
 
-        fixture.expectSelection(const []);
-        expect(fixture.noteById(selectedNote.id).length, equals(96));
-        expect(fixture.noteById(resizedNote.id).length, equals(140));
-      },
-    );
+      fixture.expectSelection(const []);
+      expect(fixture.noteById(selectedNote.id).length, equals(96));
+      expect(fixture.noteById(resizedNote.id).length, equals(140));
+    });
 
     test(
       'resizes a single note with snapping and updates cursor note parameters',
@@ -197,35 +194,32 @@ void main() {
       expect(fixture.noteById(note.id).length, equals(fixture.snapSizeAt(100)));
     });
 
-    test(
-      'snapped resize does not immediately grow notes smaller than the snap size',
-      () {
-        final snapSize = fixture.snapSizeAt(100);
-        expect(snapSize, greaterThan(1));
-        final originalLength = snapSize ~/ 2;
-        final note = fixture.addNote(
-          key: 60,
-          offset: 100,
-          length: originalLength,
-        );
-        final resizeOffset = note.offset + originalLength;
+    test('snapped resize does not immediately grow notes smaller than the snap size', () {
+      final snapSize = fixture.snapSizeAt(100);
+      expect(snapSize, greaterThan(1));
+      final originalLength = snapSize ~/ 2;
+      final note = fixture.addNote(
+        key: 60,
+        offset: 100,
+        length: originalLength,
+      );
+      final resizeOffset = note.offset + originalLength;
 
-        fixture.pointerDown(
-          key: 60.5,
-          offset: resizeOffset.toDouble(),
-          noteUnderCursor: note.id,
-          isResize: true,
-        );
-        fixture.pointerMove(key: 60.5, offset: resizeOffset.toDouble());
+      fixture.pointerDown(
+        key: 60.5,
+        offset: resizeOffset.toDouble(),
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+      fixture.pointerMove(key: 60.5, offset: resizeOffset.toDouble());
 
-        expect(fixture.noteOverrideById(note.id), isNull);
-        expect(fixture.viewModel.cursorNoteLength, equals(originalLength));
+      expect(fixture.noteOverrideById(note.id), isNull);
+      expect(fixture.viewModel.cursorNoteLength, equals(originalLength));
 
-        fixture.pointerUp(key: 60.5, offset: resizeOffset.toDouble());
+      fixture.pointerUp(key: 60.5, offset: resizeOffset.toDouble());
 
-        expect(fixture.noteById(note.id).length, equals(originalLength));
-      },
-    );
+      expect(fixture.noteById(note.id).length, equals(originalLength));
+    });
 
     test('snapped resize can return a small note to its original length', () {
       final snapSize = fixture.snapSizeAt(100);

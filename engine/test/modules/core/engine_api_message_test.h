@@ -34,6 +34,42 @@ public:
 
   void runTest() override {
     testRenderAudioRequestParsesFromDartJson();
+    testMessageRolesParseFromDartJson();
+  }
+
+  void testMessageRolesParseFromDartJson() {
+    beginTest("Shared message union parses requests, responses and events with flat tags");
+    const auto request =
+        rfl::json::read<IpcMessage>(R"({"id":0,"__type":"TestUiEchoRequest","value":"hello"})");
+    expect(request.has_value());
+    if (request) {
+      const auto& echo = rfl::get<TestUiEchoRequest>(request.value().variant());
+      expectEquals(echo.requestBase.get().id, int64_t{0});
+      expectEquals(echo.value, std::string("hello"));
+      const auto category = rfl::json::read<Request>(rfl::json::write(request.value()));
+      expect(category.has_value());
+    }
+    const auto reply = rfl::json::read<IpcMessage>(
+        R"({"id":0,"__type":"RequestErrorResponse","code":"failed","message":"write failed"})");
+    expect(reply.has_value());
+    if (reply) {
+      const auto& error = rfl::get<RequestErrorResponse>(reply.value().variant());
+      expectEquals(error.responseBase.get().id, int64_t{0});
+      expect(error.code == RequestErrorCode::failed);
+      expectEquals(error.message, std::string("write failed"));
+      expect(rfl::json::read<Response>(rfl::json::write(reply.value())).has_value());
+    }
+    const auto event = rfl::json::read<IpcMessage>(
+        R"({"__type":"AudioSessionInvalidatedEvent","reason":"device disconnected"})");
+    expect(event.has_value());
+    if (event) {
+      const auto& invalidated = rfl::get<AudioSessionInvalidatedEvent>(event.value().variant());
+      expect(invalidated.reason == std::optional<std::string>("device disconnected"));
+      const auto json = rfl::json::write(event.value());
+      expect(json.find("\"id\"") == std::string::npos);
+      expect(rfl::json::read<IpcEvent>(json).has_value());
+      expect(!rfl::json::read<Response>(json).has_value());
+    }
   }
 
   void testRenderAudioRequestParsesFromDartJson() {

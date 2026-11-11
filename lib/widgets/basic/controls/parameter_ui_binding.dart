@@ -17,11 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('parameter_ui_binding');
 
 typedef ParameterUiValueMapper = double Function(double value);
 
@@ -105,36 +108,70 @@ class ParameterUiBinding {
     return null;
   }
 
-  double uiValueForNormalizedParameterValue(double parameterValue) {
-    return parameterToUiValue(
-      SetParameterValueCommand.normalizeValue(parameterValue),
-    );
+  /// Selects a known value, clamps it to [0, 1], and maps it to the UI range.
+  /// Live automation takes precedence over pending edits and the cached value.
+  /// Controls remain empty until a pending or cached base value is known.
+  double? displayValue({double? automatedNormalizedValue}) {
+    final baseValue = port.pendingParameterValue ?? port.parameterValue;
+    if (baseValue == null) return null;
+    final normalizedValue = automatedNormalizedValue ?? baseValue;
+    return parameterToUiValue(normalizedValue.clamp(0.0, 1.0).toDouble());
   }
 
-  double get uiValue => uiValueForNormalizedParameterValue(
-    SetParameterValueCommand.effectiveParameterValue(port),
-  );
+  /// Status shown instead of a value until one has been reported or cached.
+  /// Reads the observable project engine state so status displays refresh.
+  String? get missingValueMessage {
+    if (port.pendingParameterValue != null || port.parameterValue != null) {
+      return null;
+    }
+    if (node.initializationState != NodeInitializationState.uninitialized) {
+      return 'Value unavailable';
+    }
+    return node.project.engineState == EngineState.running
+        ? 'Initializing...'
+        : 'Waiting for engine...';
+  }
+
+  /// Visual fill baseline in the same UI value domain as [displayValue].
+  double get uiVisualBaseline {
+    final baseline =
+        port.config.parameterConfig?.normalizedVisualBaseline ?? 0.0;
+    return parameterToUiValue(baseline.clamp(0.0, 1.0).toDouble());
+  }
+
+  bool get canEdit =>
+      node.canEditParameters &&
+      port.isAvailable &&
+      node.project.engine.isRunning;
 
   void beginChange() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.beginChange(node: node, port: port);
+    if (!canEdit) return;
+    ServiceRegistry.forProject(node.project.id).parameterController
+        .beginChange(node: node, port: port);
   }
 
   void updateChange(double value) {
+    if (!canEdit) return;
     ServiceRegistry.forProject(node.project.id).parameterController
         .updateChange(node: node, port: port, value: uiToParameterValue(value));
   }
 
-  void commitChange() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.commitChange(node: node, port: port);
+  Future<void> commitChange() async {
+    try {
+      await ServiceRegistry.forProject(node.project.id).parameterController
+          .commitChange(node: node, port: port);
+    } catch (error, stack) {
+      _log.warning('Could not complete parameter edit.', error, stack);
+    }
   }
 
-  void resetToDefault() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.resetToDefault(node: node, port: port);
+  Future<void> resetToDefault() async {
+    if (!canEdit) return;
+    try {
+      await ServiceRegistry.forProject(node.project.id).parameterController
+          .resetToDefault(node: node, port: port);
+    } catch (error, stack) {
+      _log.warning('Could not reset parameter.', error, stack);
+    }
   }
 }

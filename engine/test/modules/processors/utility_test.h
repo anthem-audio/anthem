@@ -39,13 +39,13 @@ class UtilityProcessorTest : public juce::UnitTest {
     auto node = graph_test_helpers::makeNode(nodeId);
 
     node->audioInputPorts()->push_back(graph_test_helpers::makePort(
-        UtilityProcessorModelBase::audioInputPortId, nodeId, NodePortDataType::audio));
+        UtilityProcessor::audioInputPortId, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(graph_test_helpers::makePort(
-        UtilityProcessorModelBase::audioOutputPortId, nodeId, NodePortDataType::audio));
+        UtilityProcessor::audioOutputPortId, nodeId, NodePortDataType::audio));
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        UtilityProcessorModelBase::gainPortId, nodeId, NodePortDataType::control));
+        UtilityProcessor::gainPortId, nodeId, NodePortDataType::control));
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        UtilityProcessorModelBase::balancePortId, nodeId, NodePortDataType::control));
+        UtilityProcessor::balancePortId, nodeId, NodePortDataType::control));
     return node;
   }
 public:
@@ -70,19 +70,19 @@ public:
 
     auto& context =
         graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
-    auto outputBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
+    auto outputBuffer = context.getOutputAudioBuffer(UtilityProcessor::audioOutputPortId);
     auto inputBuffer =
         graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
             NodeProcessContext::BufferDirection::input,
-            UtilityProcessorModelBase::audioInputPortId));
+            UtilityProcessor::audioInputPortId));
     auto gainBuffer =
         graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
-            UtilityProcessorModelBase::gainPortId));
+            UtilityProcessor::gainPortId));
     auto balanceBuffer =
         graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
-            UtilityProcessorModelBase::balancePortId));
+            UtilityProcessor::balancePortId));
 
     const std::array<float, blockSize> gainParameterValues{kGainParameterZeroDbNormalized,
         gainDbToParameterValue(-6.0f),

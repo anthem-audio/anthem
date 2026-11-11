@@ -69,10 +69,55 @@ void _createAndRegisterTrackNodes({
   required ProjectEntityIdAllocator idAllocator,
 }) {
   track.setParentPropertiesOnChildren();
-  track.createAndRegisterNodes(project, idAllocator);
+  track.createAndRegisterNodes(project, idAllocator, isSendTrack: false);
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('getTracksIterable()', () {
+    test('can exclude or include descendants of collapsed groups', () {
+      final project = ProjectModel.create();
+      ServiceRegistry.initializeProject(project);
+      addTearDown(() async {
+        await project.dispose();
+        ServiceRegistry.removeProject(project.id);
+      });
+
+      final childTrackId = project.trackOrder.first;
+      final groupTrack = TrackModel(
+        idAllocator: project.idAllocator,
+        name: 'Group',
+        color: AnthemColor.randomHue(),
+        type: .group,
+      )..childTracks.add(childTrackId);
+      project.tracks[childTrackId]!.parentTrackId = groupTrack.id;
+      project.tracks[groupTrack.id] = groupTrack;
+      project.trackOrder[0] = groupTrack.id;
+
+      final services = ServiceRegistry.forProject(project.id);
+      services.arrangerViewModel.registerTrack(groupTrack.id);
+
+      expect(
+        services.trackController.getTracksIterable().map((entry) => entry.$1),
+        contains(childTrackId),
+      );
+
+      services.arrangerViewModel.setGroupExpanded(groupTrack.id, false);
+
+      expect(
+        services.trackController.getTracksIterable().map((entry) => entry.$1),
+        isNot(contains(childTrackId)),
+      );
+      expect(
+        services.trackController
+            .getTracksIterable(includeCollapsedTracks: true)
+            .map((entry) => entry.$1),
+        contains(childTrackId),
+      );
+    });
+  });
+
   group('getTrackFxChainAudioInput()', () {
     final projectId = getProjectId();
 
@@ -109,9 +154,8 @@ void main() {
         idAllocator: idAllocator,
       );
 
-      when(
-        project.tracks,
-      ).thenReturn(AnthemObservableMap.of({track.id: track}));
+      when(project.tracks)
+          .thenReturn(AnthemObservableMap.of({track.id: track}));
 
       trackController = TrackController(project);
     });
@@ -283,9 +327,8 @@ void main() {
       when(trackB.type).thenReturn(TrackType.normal);
       when(trackC.type).thenReturn(TrackType.normal);
 
-      when(
-        trackA.childTracks,
-      ).thenReturn(AnthemObservableList.of([trackBId, trackCId]));
+      when(trackA.childTracks)
+          .thenReturn(AnthemObservableList.of([trackBId, trackCId]));
       when(trackB.childTracks).thenReturn(AnthemObservableList());
       when(trackC.childTracks).thenReturn(AnthemObservableList());
 
@@ -333,6 +376,24 @@ void main() {
       tracks[trackMId] = trackM;
       tracks[masterTrackId] = masterTrack;
       sendTrackOrder.addAll([trackLId, masterTrackId]);
+    });
+
+    test('automation lanes do not block grouping the selected tracks', () {
+      final lane = MockTrackModel();
+      when(lane.id).thenReturn(getId());
+      when(lane.isAutomationLane).thenReturn(true);
+      tracks[lane.id] = lane;
+      final trackController = TrackController(project);
+
+      expect(trackController.canGroupTracks([lane.id]), isFalse);
+      expect(
+        trackController.canGroupTracks([lane.id, trackB.id, trackC.id]),
+        isTrue,
+      );
+      expect(
+        trackController.canGroupTracks([lane.id, trackL.id, trackM.id]),
+        isTrue,
+      );
     });
 
     test('Main test', () {
@@ -540,11 +601,9 @@ void main() {
       trackOrder.addAll([regularGroup.id, regularTopA.id, regularTopB.id]);
       sendTrackOrder.addAll([sendGroup.id, sendTop.id, masterTrack.id]);
 
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeRange: TimeRange(0, 4),
-      );
+      final arrangerViewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 40
+        ..timeRange = TimeRange(0, 4);
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides([
@@ -564,13 +623,17 @@ void main() {
             trackController.buildTrackMixFragment(track),
           );
         } else {
-          track.createAndRegisterNodes(project, idAllocator);
+          track.createAndRegisterNodes(
+            project,
+            idAllocator,
+            isSendTrack: trackController.isSendTrack(track.id, false),
+          );
         }
       }
 
       trackController.rerouteTracks(tracks.keys);
 
-      when(project.execute(any)).thenAnswer((invocation) {
+      when(project.execute(any)).thenAnswer((invocation) async {
         final command = invocation.positionalArguments[0] as Command;
         command.execute(project);
       });
@@ -734,7 +797,6 @@ void main() {
     late TrackModel masterTrack;
 
     late ArrangementModel arrangementA;
-    late ArrangementModel arrangementB;
 
     late PatternModel orphanPatternA;
     late PatternModel orphanPatternB;
@@ -814,13 +876,7 @@ void main() {
       trackOrder.addAll([groupTrack.id, otherTrack.id]);
       sendTrackOrder.add(masterTrack.id);
 
-      arrangementA = sequence.arrangements[sequence.activeArrangementID]!;
-      arrangementB = ArrangementModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Arrangement B',
-      );
-      sequence.arrangements[arrangementB.id] = arrangementB;
-      sequence.arrangementOrder.add(arrangementB.id);
+      arrangementA = sequence.arrangement;
 
       orphanPatternA = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(getId),
@@ -868,18 +924,16 @@ void main() {
       arrangementA.clips[clipOnGroupOrphan.id] = clipOnGroupOrphan;
       arrangementA.clips[clipOnGroupShared.id] = clipOnGroupShared;
       arrangementA.clips[clipOnOtherShared.id] = clipOnOtherShared;
-      arrangementB.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
+      arrangementA.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
 
-      when(project.execute(any)).thenAnswer((invocation) {
+      when(project.execute(any)).thenAnswer((invocation) async {
         final command = invocation.positionalArguments[0] as Command;
         command.execute(project);
       });
 
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeRange: TimeRange(0, 4),
-      );
+      final arrangerViewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 40
+        ..timeRange = TimeRange(0, 4);
       trackController = TrackController(project);
 
       ServiceRegistry.initializeProject(
@@ -900,7 +954,11 @@ void main() {
             trackController.buildTrackMixFragment(track),
           );
         } else {
-          track.createAndRegisterNodes(project, idAllocator);
+          track.createAndRegisterNodes(
+            project,
+            idAllocator,
+            isSendTrack: trackController.isSendTrack(track.id, false),
+          );
         }
       }
 
@@ -925,14 +983,13 @@ void main() {
 
     test('deleteClips removes target clips and orphan patterns', () {
       final result = trackController.deleteClips(
-        arrangementId: arrangementA.id,
         clipIds: [clipOnGroupOrphan.id, clipOnGroupShared.id, getId()],
       );
 
       expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
       expect(arrangementA.clips[clipOnGroupShared.id], isNull);
       expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNotNull);
+      expect(arrangementA.clips[clipOnChildOrphan.id], isNotNull);
 
       expect(result.deletedClipIds, {
         clipOnGroupOrphan.id,
@@ -953,7 +1010,7 @@ void main() {
 
       expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
       expect(arrangementA.clips[clipOnGroupShared.id], isNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNull);
+      expect(arrangementA.clips[clipOnChildOrphan.id], isNull);
       expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
 
       expect(sequence.patterns[orphanPatternA.id], isNull);

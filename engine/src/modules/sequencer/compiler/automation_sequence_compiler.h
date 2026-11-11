@@ -36,8 +36,8 @@ public:
   static void compilePattern(EntityId patternId);
   static void compilePattern(EntityId patternId, std::vector<EntityId>& trackIdsToRebuild);
 
-  static void compileArrangement(EntityId arrangementId);
-  static void compileArrangement(EntityId arrangementId, std::vector<EntityId>& trackIdsToRebuild);
+  static void compileArrangement();
+  static void compileArrangement(std::vector<EntityId>& trackIdsToRebuild);
 
   static void cleanUpTrack(EntityId trackId);
 private:
@@ -57,8 +57,7 @@ private:
     std::optional<std::tuple<double, double>> sourceRange;
   };
 
-  static AutomationSpanList getTrackAutomationForArrangement(
-      EntityId trackId, EntityId arrangementId);
+  static AutomationSpanList getTrackAutomationForArrangement(EntityId trackId);
 
   static AutomationSpanList getPatternAutomationTrack(EntityId patternId);
 

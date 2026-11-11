@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.23)
 
-set(ANTHEM_VERSION "0.0.0-prealpha.1")
+set(ANTHEM_VERSION "0.0.0-prealpha.2")
 set(ANTHEM_VERSION_CORE "0.0.0")
 
 project(AnthemEngine
@@ -20,6 +20,29 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 endif()
 
 if (IS_WASM)
+  # JUCE's Wasm platform header does not define these architecture properties.
+  # In particular, its binary stream writers otherwise assume big-endian data.
+  add_compile_definitions(JUCE_32BIT=1 JUCE_LITTLE_ENDIAN=1)
+
+  # Keep browser project files independent of each audio engine's lifetime.
+  # Invoke emcc directly so this module does not inherit the engine's threading
+  # and AudioWorklet options.
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+           ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.wasm
+    COMMAND ${CMAKE_C_COMPILER}
+      ${CMAKE_CURRENT_SOURCE_DIR}/browser_file_system/runtime.c
+      --no-entry -O2
+      -sFORCE_FILESYSTEM=1 -sMODULARIZE=1
+      -sEXPORT_NAME=AnthemFileSystem -sEXPORTED_RUNTIME_METHODS=FS
+      -o ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+    DEPENDS browser_file_system/runtime.c
+    VERBATIM
+  )
+  add_custom_target(AnthemFileSystem DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+    ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.wasm)
+
   set(EXPORTED_FUNCTIONS
     _main
     _isCommsReady
@@ -37,6 +60,12 @@ if (IS_WASM)
     _getReadBufferMask
     _getReadBufferDataPtr
     _getReadBufferTicketPtr
+
+    _tryAcquireVisualizationRecord
+    _getAcquiredVisualizationRecordData
+    _getAcquiredVisualizationRecordSize
+    _getVisualizationRecordAvailableBytes
+    _releaseVisualizationRecord
   )
 
   string(JOIN "," EXPORTED_FUNCTIONS_STRING ${EXPORTED_FUNCTIONS})
@@ -46,28 +75,39 @@ if (IS_WASM)
 
   add_compile_options(
     -pthread
+    "SHELL:-sWASM_WORKERS=1"
+    # Snapshot readers catch malformed-file errors. Use JS-based exceptions:
+    # native Wasm exceptions unwind JUCE's live application during its
+    # emscripten_set_main_loop(..., simulate_infinite_loop=true) startup.
+    "$<$<COMPILE_LANGUAGE:CXX>:-fexceptions>"
 
     # "SHELL:-fsanitize=address"
   )
   
   add_link_options(
     -pthread
-    # The value 3 here maps to 3 threads in the engine:
+    -fexceptions
+    "SHELL:-sWASM_WORKERS=1"
+    "SHELL:-sAUDIO_WORKLET=1"
+    # The value "3" here maps to 3 threads in the engine:
     # - Message thread
-    # - Audio thread (or render thread)
     # - Comms thread
+    # - JUCE timers
+    # Audio rendering runs in the AudioWorklet, outside the pthread pool.
     "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
 
-    "SHELL:-INITIAL_HEAP=268435456" # 256MB
+    "SHELL:-sINITIAL_MEMORY=268435456" # 256MB; pthreads import shared memory.
     "SHELL:-sALLOW_MEMORY_GROWTH=1"
 
     "SHELL:-sMODULARIZE=1"
     "SHELL:-sEXIT_RUNTIME=1"
 
     "SHELL:-sEXPORT_NAME=AnthemEngine"
+    "SHELL:-sFORCE_FILESYSTEM=1"
+    -lproxyfs.js
     "SHELL:-sEXPORTED_FUNCTIONS='[${EXPORTED_FUNCTIONS_STRING}]'"
-    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\", \"HEAPF32\"]'"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\", \"HEAPF32\", \"FS\", \"PROXYFS\"]'"
   )
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -108,6 +148,14 @@ endif()
 
 add_subdirectory(include)          # Third-party libraries excluding JUCE
 add_subdirectory(include/JUCE)     # JUCE (this is our fork with WASM support)
+option(ANTHEM_BUILD_TEST_PLUGINS "Build controlled VST3 integration-test fixtures" OFF)
+if (ANTHEM_BUILD_TEST_PLUGINS AND NOT IS_WASM)
+  add_subdirectory(test_plugins)
+endif()
+add_subdirectory(
+  ${PROJECT_SOURCE_DIR}/../native/anthem_native_ipc
+  ${CMAKE_CURRENT_BINARY_DIR}/anthem_native_ipc
+)
 
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
@@ -145,6 +193,8 @@ target_link_libraries(AnthemEngineLib
 
     reflectcpp
     brickworks::brickworks
+    juce::juce_cryptography
+    anthem::record_ring_buffer
 )
 
 if (IS_WASM)
@@ -160,6 +210,7 @@ if (IS_WASM)
 else()
   target_link_libraries(AnthemEngineLib
     PUBLIC
+      anthem::native_ipc
       juce::juce_core
       juce::juce_events
       juce::juce_audio_basics
@@ -219,6 +270,7 @@ if (IS_WASM)
   add_executable(AnthemEngine
     ${APP_MAIN}
   )
+  add_dependencies(AnthemEngine AnthemFileSystem)
 else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
 
@@ -259,11 +311,16 @@ if (NOT IS_WASM)
   # -------------------------------------------------------------------
   add_executable(AnthemTest
     test/test.cpp
+    test/allocation_tracker.cpp
   )
 
   target_include_directories(AnthemTest
     PRIVATE
       ${PROJECT_SOURCE_DIR}/test
+  )
+
+  target_compile_definitions(AnthemTest PRIVATE
+    ANTHEM_TEST_FIXTURES_DIR="${PROJECT_SOURCE_DIR}/../test/fixtures"
   )
 
   target_link_libraries(AnthemTest

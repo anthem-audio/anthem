@@ -24,6 +24,7 @@ import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +79,7 @@ void main() {
       graph.addNode(
         NodeModel(
           id: 1,
+          processor: GainProcessorModel(nodeId: 1),
           audioOutputPorts: AnthemObservableList.of([sourceAudioPort]),
           controlOutputPorts: AnthemObservableList.of([sourceControlPort]),
         ),
@@ -85,6 +87,7 @@ void main() {
       graph.addNode(
         NodeModel(
           id: 2,
+          processor: GainProcessorModel(nodeId: 2),
           audioInputPorts: AnthemObservableList.of([destinationAudioPort]),
           controlInputPorts: AnthemObservableList.of([destinationControlPort]),
         ),
@@ -106,9 +109,54 @@ void main() {
       expect(destinationAudioPort.connections, equals([10]));
       expect(sourceControlPort.connections, isEmpty);
       expect(destinationControlPort.connections, isEmpty);
+
+      expect(sourceAudioPort.isAvailable, isFalse);
+      expect(destinationAudioPort.isAvailable, isFalse);
+      expect(graph.isConnectionResolved(connection), isFalse);
+
+      sourceAudioPort.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isFalse);
+
+      destinationAudioPort.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isTrue);
+
+      for (final port in [sourceAudioPort, destinationAudioPort]) {
+        final restored = NodePortModel.fromJson(port.toJson());
+        expect(restored.isAvailable, isFalse);
+        expect(restored.connections, [10]);
+      }
     });
 
-    test('rejects a mistyped connection without mutating the graph', () {
+    test('plugin connections can precede discovery without inventing confirmed ports', () {
+      final graph = ProcessingGraphModel();
+      final source = NodeModel(id: 1, processor: GainProcessorModel(nodeId: 1));
+      final destination = NodeModel(
+        id: 2,
+        processor: GainProcessorModel(nodeId: 2),
+      );
+      graph.addNode(source);
+      graph.addNode(destination);
+      final connection = NodeConnectionModel(
+        idAllocator: _idAllocatorFor(10),
+        sourceNodeId: 1,
+        sourcePortId: 8,
+        destinationNodeId: 2,
+        destinationPortId: 9,
+        dataType: NodePortDataType.audio,
+      );
+      graph.addConnection(connection);
+      expect(graph.connections[10], same(connection));
+      expect(source.audioOutputPorts.single.isAvailable, isFalse);
+      expect(destination.audioInputPorts.single.isAvailable, isFalse);
+      expect(graph.isConnectionResolved(connection), isFalse);
+      source.audioOutputPorts.single.isAvailable = true;
+      destination.audioInputPorts.single.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isTrue);
+      graph.removeConnection(10);
+      expect(source.audioOutputPorts.single.connections, isEmpty);
+    });
+
+    test('retains connections to a missing port of the requested type', () {
       final graph = ProcessingGraphModel();
       final sourceControlPort = _port(
         nodeId: 1,
@@ -124,12 +172,14 @@ void main() {
       graph.addNode(
         NodeModel(
           id: 1,
+          processor: GainProcessorModel(nodeId: 1),
           controlOutputPorts: AnthemObservableList.of([sourceControlPort]),
         ),
       );
       graph.addNode(
         NodeModel(
           id: 2,
+          processor: GainProcessorModel(nodeId: 2),
           audioInputPorts: AnthemObservableList.of([destinationAudioPort]),
         ),
       );
@@ -143,10 +193,14 @@ void main() {
         dataType: NodePortDataType.control,
       );
 
-      expect(() => graph.addConnection(connection), throwsException);
-      expect(graph.connections, isEmpty);
-      expect(sourceControlPort.connections, isEmpty);
+      graph.addConnection(connection);
+      expect(graph.connections[11], same(connection));
+      expect(sourceControlPort.connections, [11]);
       expect(destinationAudioPort.connections, isEmpty);
+      final placeholder = graph.nodes[2]!.controlInputPorts.single;
+      expect(placeholder.isAvailable, isFalse);
+      expect(placeholder.connections, [11]);
+      expect(graph.isConnectionResolved(connection), isFalse);
     });
   });
 
@@ -159,7 +213,10 @@ void main() {
         nodeId: nodeId,
         id: 100,
         dataType: NodePortDataType.control,
-        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+        parameterConfig: ParameterConfigModel(
+          id: 100,
+          factoryDefaultValue: 0.5,
+        ),
       );
       final nonParameterPort = _port(
         nodeId: nodeId,
@@ -168,6 +225,7 @@ void main() {
       );
       final node = NodeModel(
         id: nodeId,
+        processor: GainProcessorModel(nodeId: nodeId),
         controlInputPorts: AnthemObservableList.of([
           parameterPort,
           nonParameterPort,
@@ -193,7 +251,10 @@ void main() {
         nodeId: nodeId,
         id: 100,
         dataType: NodePortDataType.control,
-        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+        parameterConfig: ParameterConfigModel(
+          id: 100,
+          factoryDefaultValue: 0.5,
+        ),
       );
       final nonParameterPort = _port(
         nodeId: nodeId,
@@ -202,6 +263,7 @@ void main() {
       );
       final node = NodeModel(
         id: nodeId,
+        processor: GainProcessorModel(nodeId: nodeId),
         controlInputPorts: AnthemObservableList.of([
           parameterPort,
           nonParameterPort,

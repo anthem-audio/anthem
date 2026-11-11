@@ -44,6 +44,8 @@ private:
   HeartbeatThread heartbeatThread;
   bool heartbeatThreadStarted = false;
 
+  void handleRequest(Request request);
+
   juce::CriticalSection commandQueueMutex;
   std::queue<juce::MemoryBlock> commandQueue;
 public:

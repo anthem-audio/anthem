@@ -19,10 +19,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:anthem/engine_api/memory_block.dart';
+import 'package:anthem/engine_api/length_prefixed_json_decoder.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:flutter/foundation.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('engine_connector');
@@ -47,6 +48,17 @@ abstract class EngineConnectorBase {
 
   late final Future<bool> onInit;
 
+  /// Child process ID, when the connector owns a separate process.
+  int? get processId => null;
+
+  /// Exit status once the connector confirms that its runtime has exited.
+  int? get processExitCode => null;
+
+  /// Closes the connection and waits until its runtime has stopped using files.
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
+    dispose();
+  }
+
   /// Should be set to kDebugMode from Flutter, or false if not running in a
   /// Flutter environment.
   ///
@@ -57,13 +69,56 @@ abstract class EngineConnectorBase {
 
   final bool noHeartbeat;
 
-  final void Function(Response reply)? _onReply;
+  /// Receives every decoded JSON message, including heartbeat responses.
+  ///
+  /// The receiver dispatches requests, responses, and events.
+  final void Function(IpcMessage message)? _onMessage;
+
+  /// Reports that this connector can no longer exchange messages.
+  final void Function()? _onConnectionClosed;
+
+  void Function(VisualizationRecord record)? onVisualizationRecord;
+  VisualizationRecordConsumer? visualizationRecordConsumer;
+  Timer? _visualizationContinuation;
+  bool _disposed = false;
+
+  void pollVisualizationRecords() {
+    if (_disposed) return;
+    try {
+      visualizationRecordConsumer?.poll();
+      if (visualizationRecordConsumer?.reachedBudget == true &&
+          _visualizationContinuation == null) {
+        _visualizationContinuation = Timer(Duration.zero, () {
+          _visualizationContinuation = null;
+          pollVisualizationRecords();
+        });
+      }
+    } catch (error, stackTrace) {
+      _log.severe('Failed to read visualization records.', error, stackTrace);
+      dispose();
+    }
+  }
+
+  void handleVisualizationRecord(VisualizationRecord record) {
+    try {
+      onVisualizationRecord?.call(record);
+    } catch (error, stackTrace) {
+      _log.severe('Failed to process visualization update.', error, stackTrace);
+    }
+  }
+
+  late final LengthPrefixedJsonDecoder _messageDecoder;
 
   EngineConnectorBase({
     required this.kDebugMode,
     required this.noHeartbeat,
-    this._onReply,
-  });
+    this._onMessage,
+    this._onConnectionClosed,
+  }) {
+    _messageDecoder = LengthPrefixedJsonDecoder(
+      onMessage: _handleDecodedMessage,
+    );
+  }
 
   void startHeartbeatTimer() {
     _heartbeatCheckTimer = Timer.periodic(
@@ -84,12 +139,7 @@ abstract class EngineConnectorBase {
 
     _engineHeartbeatTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       final id = getRequestId();
-
-      final heartbeat = Heartbeat(id: id);
-
-      final encoder = JsonUtf8Encoder();
-
-      send(encoder.convert(heartbeat.toJson()) as Uint8List);
+      sendMessage(Heartbeat(id: id));
     });
   }
 
@@ -97,96 +147,79 @@ abstract class EngineConnectorBase {
     _heartbeatReceived = true;
   }
 
-  void send(Uint8List bytes);
+  /// Sends a serialized JSON payload using the platform's IPC transport.
+  ///
+  /// Implementations add transport framing as needed. Callers should use
+  /// [sendMessage] to serialize messages and handle send failures.
+  void sendBytes(Uint8List bytes);
 
-  final _messageBuffer = MemoryBlock();
+  /// Called after the engine confirms that it opened the shared memory.
+  void finalizeVisualizationSharedMemorySetup();
 
-  void onReceive(Uint8List message) {
-    if (_onReply == null) return;
+  void onReceive(Uint8List bytes) {
+    if (_disposed) return;
 
-    // Append incoming data to the buffer
-    _messageBuffer.append(message);
+    try {
+      _messageDecoder.add(bytes);
+    } on FormatException catch (_) {
+      // Malformed framing or JSON means the IPC stream can no longer be
+      // interpreted reliably. Shut down the connector and surface the error.
+      dispose();
+      rethrow;
+    }
+  }
 
-    // Process the buffer to extract complete messages
-    while (_messageBuffer.buffer.length >= 8) {
-      // Extract the message length (8 bytes, 64-bit integer)
-      final byteData = ByteData.sublistView(
-        Uint8List.fromList(_messageBuffer.buffer),
+  void _handleDecodedMessage(Object? json) {
+    if (_disposed) return;
+    if (json is! Map<String, dynamic>) {
+      throw FormatException(
+        'Expected an IPC message to be a JSON object, got '
+        '${json.runtimeType}.',
       );
+    }
 
-      var messageLength = 0;
+    final message = IpcMessage.fromJson(json);
 
-      if (kIsWeb && !kIsWasm) {
-        // Read two 32-bit words and combine safely using BigInt to avoid JS 32-bit shifts.
-        final lowOffset = Endian.host == Endian.little ? 0 : 4;
-        final highOffset = Endian.host == Endian.little ? 4 : 0;
+    try {
+      _onMessage?.call(message);
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Unhandled exception while processing engine message '
+        '${message.runtimeType}.',
+        error,
+        stackTrace,
+      );
+    }
+  }
 
-        final low = byteData.getUint32(lowOffset, Endian.host);
-        final high = byteData.getUint32(highOffset, Endian.host);
-
-        final bigLen = (BigInt.from(high) << 32) | BigInt.from(low);
-
-        // Guard against values that exceed JS safe integer range.
-        const maxSafe = 0x001F_FFFF_FFFF_FFFF; // 2^53 - 1
-        if (bigLen > BigInt.from(maxSafe)) {
-          throw StateError(
-            'Message length exceeds JS safe integer range: $bigLen',
-          );
-        }
-
-        messageLength = bigLen.toInt();
-      } else {
-        messageLength = byteData.getUint64(0, Endian.host);
-      }
-
-      // Check if the buffer contains the full message
-      if (_messageBuffer.buffer.length >= 8 + messageLength) {
-        // Extract the full message
-        final messageStart = 8;
-        final messageEnd = messageStart + messageLength;
-        final fullMessage = _messageBuffer.buffer.sublist(
-          messageStart,
-          messageEnd,
-        );
-
-        Response response;
-        try {
-          response = Response.fromJson(jsonDecode(utf8.decode(fullMessage)));
-        } on FormatException catch (_) {
-          // If we can't decode, then something is fatally wrong. This is
-          // probably a bug, so we should shut down the engine and report the
-          // error.
-          dispose();
-
-          rethrow;
-        }
-
-        // Remove the processed message from the buffer
-        _messageBuffer.removeRange(0, 8 + messageLength);
-
-        // Handle heartbeat reply
-        if (response is HeartbeatReply) {
-          acknowledgeHeartbeat();
-        } else {
-          try {
-            _onReply(response);
-          } catch (error, stackTrace) {
-            _log.severe(
-              'Unhandled exception while processing engine response '
-              '${response.runtimeType}.',
-              error,
-              stackTrace,
-            );
-          }
-        }
-      } else {
-        // Not enough data for a full message yet
-        break;
-      }
+  /// Serializes [message] as JSON and sends it through this connection.
+  ///
+  /// Messages are ignored after disposal. If serialization or transmission
+  /// fails, closes the connector and reports connection closure.
+  ///
+  /// This method does not schedule requests or wait for responses. Asynchronous
+  /// request handlers must retain the connector that received their request so
+  /// their response cannot reach a replacement engine connection.
+  void sendMessage(IpcMessage message) {
+    if (_disposed) return;
+    try {
+      sendBytes(JsonUtf8Encoder().convert(message.toJson()) as Uint8List);
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Failed to send IPC message ${message.runtimeType}.',
+        error,
+        stackTrace,
+      );
+      dispose();
     }
   }
 
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _visualizationContinuation?.cancel();
+    _visualizationContinuation = null;
+    visualizationRecordConsumer = null;
     // Stop the heartbeat check timer
     _heartbeatCheckTimer?.cancel();
 
@@ -194,5 +227,6 @@ abstract class EngineConnectorBase {
     _engineHeartbeatTimer?.cancel();
 
     _heartbeatReceived = false;
+    _onConnectionClosed?.call();
   }
 }

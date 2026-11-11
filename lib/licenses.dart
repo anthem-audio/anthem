@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -87,7 +87,7 @@ SOFTWARE.
     yield LicenseEntryWithLineBreaks(
       ['Brickworks'],
       '''
-Copyright (C) 2021-2025 Orastron Srl unipersonale.
+Copyright (C) 2021-2026 Orastron Srl unipersonale.
 
 Authors: Stefano D'Angelo, Paolo Marrone.
 
@@ -122,10 +122,9 @@ Emscripten. These modifications were made between September and October of 2025.
     yield LicenseEntryWithLineBreaks(
       ['LAME'],
       '''
-LAME 3.100 source code is included as a Git submodule at engine/include/lame.
+LAME 4.0 is distributed under the GNU Library General Public License, version 2.
 
-The LAME project is distributed under the GNU Library General Public License,
-version 2. See engine/include/lame/COPYING for the bundled source.
+Source code and license: https://github.com/anthem-audio/LAME/tree/v4.0
 ''',
     );
     yield LicenseEntryWithLineBreaks(['LAME'], lgpl2);

@@ -62,17 +62,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
 
-    TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
-      key: 'projectArrangementsFolder',
-      label: 'Arrangements',
-      children: project.sequence.arrangementOrder
-          .map(
-            (id) => TreeViewItemModel(
-              key: 'arrangement-$id',
-              label: project.sequence.arrangements[id]!.name,
-            ),
-          )
-          .toList(),
+    TreeViewItemModel getArrangementTree() => TreeViewItemModel(
+      key: 'arrangement-${project.sequence.arrangement.id}',
+      label: project.sequence.arrangement.name,
     );
 
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
@@ -150,7 +142,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                                 key: 'currentProject',
                                 label: 'Current project',
                                 children: [
-                                  getArrangementsTree(),
+                                  getArrangementTree(),
                                   getPatternsTree(),
                                 ],
                               ),

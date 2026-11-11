@@ -54,7 +54,7 @@ class InvalidUnionAssignmentRule extends AnalysisRule {
     RuleContext context,
   ) {
     final visitor = _Visitor(this, context);
-    registry.addNamedExpression(this, visitor);
+    registry.addNamedArgument(this, visitor);
     registry.addAssignmentExpression(this, visitor);
     registry.addConstructorFieldInitializer(this, visitor);
   }
@@ -93,13 +93,13 @@ final class _Visitor extends SimpleAstVisitor<void> {
   }
 
   @override
-  void visitNamedExpression(NamedExpression node) {
+  void visitNamedArgument(NamedArgument node) {
     if (shouldSkipGeneratedFile(context)) return;
 
-    final unionInfo = _unionInfoForFormalParameter(node.element);
+    final unionInfo = _unionInfoForFormalParameter(node.correspondingParameter);
     if (unionInfo == null) return;
 
-    _reportIfInvalid(expression: node.expression, unionInfo: unionInfo);
+    _reportIfInvalid(expression: node.argumentExpression, unionInfo: unionInfo);
   }
 
   _UnionFieldInfo? _unionInfoForElement(Element? element) {

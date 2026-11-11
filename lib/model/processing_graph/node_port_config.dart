@@ -46,9 +46,14 @@ class NodePortConfigModel extends _NodePortConfigModel
 
 abstract class _NodePortConfigModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  @anthemObservable
   NodePortDataType dataType;
+  @anthemObservable
   String? name;
+  @anthemObservable
   int? channelCount;
+
+  @anthemObservable
   ParameterConfigModel? parameterConfig;
 
   _NodePortConfigModel({

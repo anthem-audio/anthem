@@ -31,34 +31,21 @@ import 'timeline_interaction_target.dart';
 /// The timeline controller, which owns logic for the shared timeline widget.
 class TimelineController {
   final ProjectModel project;
-  final Id? arrangementID;
-  final Id? patternID;
-  final TimelineInteractionTarget? interactionTarget;
+  final TimelineInteractionTarget interactionTarget;
 
   late final TimelineStateMachine stateMachine;
 
   bool _isDisposed = false;
   double? _lastPlayheadPositionSet;
 
-  TimelineController({
-    required this.project,
-    required this.arrangementID,
-    required this.patternID,
-  }) : interactionTarget = TimelineInteractionTarget.tryCreate(
-         arrangementID: arrangementID,
-         patternID: patternID,
-       ),
-       assert(
-         arrangementID == null || patternID == null,
-         'TimelineController can target at most one sequence at a time.',
-       ) {
+  TimelineController({required this.project, required this.interactionTarget}) {
     stateMachine = TimelineStateMachine.create(
       project: project,
       controller: this,
     );
   }
 
-  Id? get sequenceId => interactionTarget?.sequenceId;
+  Id? get sequenceId => interactionTarget.sequenceId(project);
 
   void pointerDown(
     PointerDownEvent event, {
@@ -117,23 +104,23 @@ class TimelineController {
   }
 
   List<TimeSignatureChangeModel> timeSignatureChanges() {
-    return interactionTarget?.timeSignatureChanges(project) ?? [];
+    return interactionTarget.timeSignatureChanges(project);
   }
 
   LoopPointsModel? loopPoints() {
-    return interactionTarget?.loopPoints(project);
+    return interactionTarget.loopPoints(project);
   }
 
   void clearLoopPoints() {
-    interactionTarget?.clearLoopPoints(project);
+    interactionTarget.clearLoopPoints(project);
   }
 
   void setLoopPoints({required int start, required int end}) {
-    interactionTarget?.setLoopPoints(project, start: start, end: end);
+    interactionTarget.setLoopPoints(project, start: start, end: end);
   }
 
   void updateLoopPoints({int? start, int? end}) {
-    interactionTarget?.updateLoopPoints(project, start: start, end: end);
+    interactionTarget.updateLoopPoints(project, start: start, end: end);
   }
 
   double clampTimelineTime(double rawTime) {

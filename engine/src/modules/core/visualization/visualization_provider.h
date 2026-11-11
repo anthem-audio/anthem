@@ -44,9 +44,7 @@ template <typename T> struct TimestampedVisualizationValue {
 
 using NumericVisualizationData = TimestampedVisualizationData<double>;
 using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
-using StringVisualizationData = TimestampedVisualizationData<std::string>;
-using VisualizationDataPayload =
-    std::variant<NumericVisualizationData, IntegerVisualizationData, StringVisualizationData>;
+using VisualizationDataPayload = std::variant<NumericVisualizationData, IntegerVisualizationData>;
 
 template <typename T, std::size_t Size>
 std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
@@ -124,8 +122,8 @@ public:
 };
 
 // This non-templated base class is required for runtime polymorphism. The
-// VisualizationBroker stores heterogeneous providers (double, int, string,
-// etc.) in a single container keyed by ID, so it needs one common interface
+// VisualizationBroker stores heterogeneous providers (double and int)
+// in a single container keyed by ID, so it needs one common interface
 // that is not templated on the payload type.
 class VisualizationDataProvider {
 public:

@@ -25,7 +25,6 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
@@ -54,16 +53,13 @@ void main() {
   late MockProjectModel project;
   late ProjectId projectId;
   late SequencerModel sequence;
-  late AnthemObservableMap<Id, ArrangementModel> arrangements;
-  late AnthemObservableList<Id> arrangementOrder;
 
   ArrangementModel addArrangementToProject(String name) {
     final arrangement = ArrangementModel(
       idAllocator: ProjectEntityIdAllocator.test(getId),
       name: name,
     );
-    arrangements[arrangement.id] = arrangement;
-    arrangementOrder.add(arrangement.id);
+    sequence.arrangement = arrangement;
     return arrangement;
   }
 
@@ -79,11 +75,7 @@ void main() {
 
   setUp(() {
     sequence = SequencerModel.uninitialized();
-    arrangements = AnthemObservableMap();
-    arrangementOrder = AnthemObservableList();
-
-    sequence.arrangements = arrangements;
-    sequence.arrangementOrder = arrangementOrder;
+    addArrangementToProject('Arrangement 1');
     projectId = getProjectId();
     project = MockProjectModel(projectId, sequence);
     ServiceRegistry.initializeProject(project);
@@ -97,10 +89,7 @@ void main() {
     test('add execute and rollback', () {
       final arrangement = addArrangementToProject('Arrangement 1');
       final clip = createClip(offset: 128);
-      final command = ClipAddRemoveCommand.add(
-        arrangementID: arrangement.id,
-        clip: clip,
-      );
+      final command = ClipAddRemoveCommand.add(clip: clip);
 
       command.execute(project);
       expect(arrangement.clips[clip.id], same(clip));
@@ -116,7 +105,6 @@ void main() {
 
       final command = ClipAddRemoveCommand.remove(
         project: project,
-        arrangementID: arrangement.id,
         clipId: clip.id,
       );
 
@@ -127,49 +115,21 @@ void main() {
       expect(arrangement.clips[clip.id], same(clip));
     });
 
-    test('add throws when arrangement does not exist', () {
-      final clip = createClip();
-      final command = ClipAddRemoveCommand.add(
-        arrangementID: getId(),
-        clip: clip,
-      );
-
-      expect(() => command.execute(project), throwsA(isA<StateError>()));
-    });
-
     test('add throws when clip already exists', () {
       final arrangement = addArrangementToProject('Arrangement 1');
       final clip = createClip();
       arrangement.clips[clip.id] = clip;
 
-      final command = ClipAddRemoveCommand.add(
-        arrangementID: arrangement.id,
-        clip: clip,
-      );
+      final command = ClipAddRemoveCommand.add(clip: clip);
 
       expect(() => command.execute(project), throwsA(isA<StateError>()));
     });
 
-    test('remove constructor throws when arrangement does not exist', () {
-      expect(
-        () => ClipAddRemoveCommand.remove(
-          project: project,
-          arrangementID: getId(),
-          clipId: getId(),
-        ),
-        throwsA(isA<StateError>()),
-      );
-    });
-
     test('remove constructor throws when clip does not exist', () {
-      final arrangement = addArrangementToProject('Arrangement 1');
+      addArrangementToProject('Arrangement 1');
 
       expect(
-        () => ClipAddRemoveCommand.remove(
-          project: project,
-          arrangementID: arrangement.id,
-          clipId: getId(),
-        ),
+        () => ClipAddRemoveCommand.remove(project: project, clipId: getId()),
         throwsA(isA<StateError>()),
       );
     });
@@ -181,7 +141,6 @@ void main() {
 
       final command = ClipAddRemoveCommand.remove(
         project: project,
-        arrangementID: arrangement.id,
         clipId: clip.id,
       );
 
@@ -192,82 +151,10 @@ void main() {
   });
 
   group('Arrangement commands', () {
-    test('AddArrangementCommand execute and rollback', () {
-      final existingArrangement = addArrangementToProject('Arrangement 1');
-      sequence.activeArrangementID = existingArrangement.id;
-      sequence.activeTransportSequenceID = existingArrangement.id;
-
-      final command = AddArrangementCommand(
-        project: project,
-        arrangementName: 'New Arrangement',
-      );
-
-      command.execute(project);
-
-      expect(arrangements[command.arrangementID], isNotNull);
-      expect(arrangementOrder.last, equals(command.arrangementID));
-
-      sequence.activeArrangementID = command.arrangementID;
-      sequence.activeTransportSequenceID = command.arrangementID;
-      command.rollback(project);
-
-      expect(arrangements[command.arrangementID], isNull);
-      expect(arrangementOrder.contains(command.arrangementID), isFalse);
-      expect(sequence.activeArrangementID, equals(existingArrangement.id));
-      expect(
-        sequence.activeTransportSequenceID,
-        equals(existingArrangement.id),
-      );
-    });
-
-    test(
-      'AddArrangementCommand rollback falls back when previous IDs missing',
-      () {
-        final command = AddArrangementCommand(
-          project: project,
-          arrangementName: 'New Arrangement',
-        );
-
-        command.execute(project);
-        sequence.activeArrangementID = command.arrangementID;
-        sequence.activeTransportSequenceID = command.arrangementID;
-
-        command.rollback(project);
-
-        expect(sequence.activeArrangementID, isNull);
-        expect(sequence.activeTransportSequenceID, isNull);
-      },
-    );
-
-    test('DeleteArrangementCommand execute and rollback preserves index', () {
-      final arrangementA = addArrangementToProject('A');
-      final arrangementB = addArrangementToProject('B');
-      final arrangementC = addArrangementToProject('C');
-
-      final command = DeleteArrangementCommand(
-        project: project,
-        arrangement: arrangementB,
-      );
-
-      command.execute(project);
-
-      expect(arrangements[arrangementB.id], isNull);
-      expect(arrangementOrder, equals([arrangementA.id, arrangementC.id]));
-
-      command.rollback(project);
-
-      expect(arrangements[arrangementB.id], same(arrangementB));
-      expect(
-        arrangementOrder,
-        equals([arrangementA.id, arrangementB.id, arrangementC.id]),
-      );
-    });
-
     test('SetArrangementNameCommand execute and rollback', () {
       final arrangement = addArrangementToProject('Old Name');
       final command = SetArrangementNameCommand(
         project: project,
-        arrangementID: arrangement.id,
         newName: 'New Name',
       );
 
@@ -300,7 +187,6 @@ void main() {
       arrangement.clips[secondClip.id] = secondClip;
 
       final command = MoveClipsCommand(
-        arrangementID: arrangement.id,
         clipMoves: [
           (clipID: firstClip.id, oldOffset: 64, newOffset: 128),
           (clipID: secondClip.id, oldOffset: 80, newOffset: 144),
@@ -328,7 +214,6 @@ void main() {
       arrangement.clips[clip.id] = clip;
 
       final command = ResizeClipsCommand(
-        arrangementID: arrangement.id,
         clipResizes: [
           (
             clipID: clip.id,
@@ -360,7 +245,6 @@ void main() {
       arrangement.clips[clip.id] = clip;
 
       final command = ResizeClipsCommand(
-        arrangementID: arrangement.id,
         clipResizes: [
           (
             clipID: clip.id,
@@ -394,7 +278,6 @@ void main() {
       arrangement.clips[secondClip.id] = secondClip;
 
       final command = ResizeClipsCommand(
-        arrangementID: arrangement.id,
         clipResizes: [
           (
             clipID: firstClip.id,

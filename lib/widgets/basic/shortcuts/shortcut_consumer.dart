@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,7 +36,7 @@ class ShortcutConsumer extends StatefulWidget {
   final Widget? child;
 
   /// This function will be called when this consumer receives a shortcut.
-  final void Function(LogicalKeySet shortcut)? shortcutHandler;
+  final bool Function(LogicalKeySet shortcut)? shortcutHandler;
 
   /// A raw key handler.
   ///
@@ -90,16 +90,16 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
         final project = Provider.of<ProjectModel>(context, listen: false);
 
         // Don't process shortcuts if this tab is not selected
-        if (project.id != AnthemStore.instance.activeProjectId) return;
+        if (project.id != AnthemStore.instance.activeProjectId) return false;
 
-        onShortcut(event);
+        return onShortcut(event);
       },
     );
     registered = true;
   }
 
-  void onShortcut(LogicalKeySet shortcut) {
-    widget.shortcutHandler?.call(shortcut);
+  bool onShortcut(LogicalKeySet shortcut) {
+    return widget.shortcutHandler?.call(shortcut) ?? false;
   }
 
   @override

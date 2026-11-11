@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
@@ -27,10 +28,12 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -239,6 +242,79 @@ void main() {
   });
 
   group('paintAutomationHoldSegments', () {
+    for (final withClips in [true, false]) {
+      test(
+        'pan holds shade toward the content center: clips=$withClips',
+        () async {
+          final fixture = _AutomationHoldPaintFixture.create(
+            withAutomationClips: withClips,
+          );
+          addTearDown(fixture.dispose);
+          fixture.viewModel.refreshTrackLayout(160);
+          final row = fixture.viewModel.trackLayout.rowLayouts.firstWhere(
+            (row) => row.row.rowId == fixture.lane.id,
+          );
+          final bounds = automationContentVerticalBoundsForRow(
+            rowTop: row.contentSpan.top,
+            rowHeight: row.contentSpan.height,
+          );
+          final pixels = await _paintHoldPixels(fixture);
+          int alpha(double contentFraction) => pixels.getUint8(
+            (bounds.top + (bounds.bottom - bounds.top) * contentFraction)
+                        .floor() *
+                    500 *
+                    4 +
+                120 * 4 +
+                3,
+          );
+          // Tick 120 is in the gap after the first clip (held value 0.75).
+          // Empty lanes instead hold 0.35, below the center.
+          expect(alpha(withClips ? 0.375 : 0.575), greaterThan(0));
+          expect(alpha(0.85), 0);
+          expect(alpha(withClips ? 0.65 : 0.25), 0);
+        },
+      );
+    }
+
+    test('temporary pan rows use the parameter baseline', () async {
+      final fixture = _AutomationHoldPaintFixture.create(
+        withAutomationClips: false,
+        portId: UtilityProcessorModel.gainPortId,
+      );
+      addTearDown(fixture.dispose);
+      final parentTrack =
+          fixture.project.tracks[fixture.project.trackOrder.single]!;
+      final node = parentTrack.requireProcessing.utilityNode!;
+      node.getPortById(UtilityProcessorModel.balancePortId).parameterValue =
+          0.25;
+      fixture.viewModel.lastTweakedAutomationTarget = AutomationParameterTarget(
+        ownerTrackId: parentTrack.id,
+        nodeId: node.id,
+        portId: UtilityProcessorModel.balancePortId,
+        ownerName: 'Track',
+        parameterName: 'Pan',
+      );
+      fixture.viewModel.refreshTrackLayout(220);
+      final row = fixture.viewModel.trackLayout.rowLayouts.firstWhere(
+        (row) => row.row is PhantomAutomationTrackRow,
+      );
+      final bounds = automationContentVerticalBoundsForRow(
+        rowTop: row.contentSpan.top,
+        rowHeight: row.contentSpan.height,
+      );
+      final pixels = await _paintHoldPixels(fixture);
+      int alpha(double contentFraction) => pixels.getUint8(
+        (bounds.top + (bounds.bottom - bounds.top) * contentFraction).floor() *
+                500 *
+                4 +
+            120 * 4 +
+            3,
+      );
+      expect(alpha(0.625), greaterThan(0));
+      expect(alpha(0.9), 0);
+      expect(alpha(0.25), 0);
+    });
+
     test(
       'draws batched line and fill pixels for visible automation gaps',
       () async {
@@ -550,9 +626,8 @@ TrackModel _addAutomationLane({
 
   project.tracks[lane.id] = lane;
   parentTrack.automationLanes.add(lane.id);
-  ServiceRegistry.forProject(
-    project.id,
-  ).arrangerViewModel.registerTrack(lane.id);
+  ServiceRegistry.forProject(project.id).arrangerViewModel
+      .registerTrack(lane.id);
 
   return lane;
 }
@@ -596,7 +671,7 @@ List<AutomationHoldSegment> _buildSegments(List<_ClipSpec> clipSpecs) {
 
     return buildAutomationHoldSegments(project: project, clips: clips);
   } finally {
-    project.dispose();
+    addTearDown(project.dispose);
   }
 }
 
@@ -606,7 +681,7 @@ double _evaluatePoints(List<_PointSpec> pointSpecs, double tick) {
     final points = _createAutomationPoints(project, pointSpecs);
     return evaluateAutomationHoldValueAtSourceTick(points, tick);
   } finally {
-    project.dispose();
+    addTearDown(project.dispose);
   }
 }
 
@@ -659,24 +734,31 @@ class _AutomationHoldPaintFixture {
 
   factory _AutomationHoldPaintFixture.create({
     bool withAutomationClips = true,
+    int? portId,
   }) {
+    portId ??= UtilityProcessorModel.balancePortId;
     final project = ProjectModel.create();
     ServiceRegistry.initializeProject(project);
 
     final parentTrack = project.tracks[project.trackOrder.first]!;
     final utilityNode = parentTrack.requireProcessing.utilityNode!;
-    final balancePort = utilityNode.getPortById(
-      UtilityProcessorModel.balancePortId,
-    );
-    balancePort.parameterValue = 0.35;
+    for (final port in utilityNode.controlInputPorts) {
+      port.config.parameterConfig = ParameterConfigModel(
+        id: port.id,
+        normalizedVisualBaseline: port.id == UtilityProcessorModel.balancePortId
+            ? 0.5
+            : 0.0,
+      );
+    }
+    utilityNode.getPortById(portId).parameterValue = 0.35;
     final viewModel = ServiceRegistry.forProject(project.id).arrangerViewModel;
 
     AutomationLaneAddRemoveCommand.add(
       project: project,
       parentTrackId: parentTrack.id,
       nodeId: utilityNode.id,
-      portId: UtilityProcessorModel.balancePortId,
-      name: 'Balance',
+      portId: portId,
+      name: 'Parameter',
     ).execute(project);
 
     final lane = project.tracks[parentTrack.automationLanes.single]!;
@@ -696,8 +778,7 @@ class _AutomationHoldPaintFixture {
       _point(96, 0.1),
     ]);
 
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final arrangement = project.sequence.arrangement;
     _addClip(
       project: project,
       arrangement: arrangement,
@@ -729,15 +810,14 @@ class _AutomationHoldPaintFixture {
     return _AutomationHoldPaintFixture._(project: project, lane: lane);
   }
 
-  ArrangementModel get arrangement =>
-      project.sequence.arrangements[project.sequence.activeArrangementID]!;
+  ArrangementModel get arrangement => project.sequence.arrangement;
 
   ArrangerViewModel get viewModel =>
       ServiceRegistry.forProject(project.id).arrangerViewModel;
 
-  void dispose() {
+  Future<void> dispose() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   }
 }
 
@@ -807,4 +887,22 @@ Future<int> _countNonTransparentPixels(ui.Image image) async {
   }
 
   return pixelCount;
+}
+
+Future<ByteData> _paintHoldPixels(_AutomationHoldPaintFixture fixture) async {
+  final recorder = ui.PictureRecorder();
+  paintAutomationHoldSegments(
+    project: fixture.project,
+    arrangement: fixture.arrangement,
+    viewModel: fixture.viewModel,
+    canvas: ui.Canvas(recorder),
+    canvasSize: const ui.Size(500, 220),
+    timeViewStart: 0,
+    timeViewEnd: 500,
+    renderedVerticalScrollPosition: 0,
+  );
+  final image = await recorder.endRecording().toImage(500, 220);
+  final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+  image.dispose();
+  return pixels;
 }

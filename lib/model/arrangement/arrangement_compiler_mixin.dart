@@ -23,7 +23,7 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
   void _recompileOnClipAddedOrRemoved(ClipModel? oldClip, ClipModel? newClip) {
     // If the engine is not running, then we don't need to worry about
     // sending this update. When the engine is started, it will recompile
-    // all arrangements.
+    // the arrangement.
     if (!project.engine.isRunning) {
       return;
     }
@@ -73,7 +73,7 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
   void _recompileOnClipFieldChanged(ModelChangeEvent change) {
     // If the engine is not running, then we don't need to worry about
     // sending this update. When the engine is started, it will recompile
-    // all arrangements.
+    // the arrangement.
     if (!project.engine.isRunning) {
       return;
     }
@@ -190,7 +190,6 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       }
 
       project.engine.sequencerApi.compileArrangement(
-        id,
         tracksToRebuild: _tracksToCompile.toList(),
         invalidationRanges: _invalidationRangeCollector.getRanges(),
       );
@@ -206,6 +205,6 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       return;
     }
 
-    project.engine.sequencerApi.compileArrangement(id);
+    project.engine.sequencerApi.compileArrangement();
   }
 }

@@ -37,8 +37,8 @@ abstract class _InvalidationRange {
   _InvalidationRange({required this.start, required this.end});
 }
 
-/// A request to compile either a pattern or an arrangement.
-class CompileSequenceRequest extends Request {
+/// A request to compile the project's arrangement.
+class CompileArrangementRequest extends Request {
   /// The track IDs to rebuild.
   ///
   /// If unspecified, all tracks will be rebuilt.
@@ -63,32 +63,38 @@ class CompileSequenceRequest extends Request {
   /// does not require note invalidation.
   List<InvalidationRange>? invalidationRanges;
 
-  /// The pattern ID to compile.
-  ///
-  /// Either this or [arrangementId] must be specified.
-  Id? patternId;
+  CompileArrangementRequest.uninitialized();
 
-  /// The arrangement ID to compile.
-  ///
-  /// Either this or [patternId] must be specified.
-  Id? arrangementId;
-
-  CompileSequenceRequest.uninitialized();
-
-  /// Creates a request to compile a pattern.
-  CompileSequenceRequest.pattern({
+  CompileArrangementRequest({
     required int id,
-    required this.patternId,
     this.tracksToRebuild,
     this.invalidationRanges,
   }) {
     super.id = id;
   }
+}
 
-  /// Creates a request to compile an arrangement.
-  CompileSequenceRequest.arrangement({
+/// A request to compile a pattern.
+class CompilePatternRequest extends Request {
+  /// The ID of the pattern to compile.
+  Id patternId;
+
+  /// The track IDs to rebuild.
+  ///
+  /// If unspecified, all tracks will be rebuilt.
+  List<Id>? tracksToRebuild;
+
+  /// If specified, these are the ranges of the sequence that are no longer
+  /// valid for note playback.
+  ///
+  /// This should not be defined unless [tracksToRebuild] is also defined.
+  List<InvalidationRange>? invalidationRanges;
+
+  CompilePatternRequest.uninitialized() : patternId = -1;
+
+  CompilePatternRequest({
     required int id,
-    required this.arrangementId,
+    required this.patternId,
     this.tracksToRebuild,
     this.invalidationRanges,
   }) {

@@ -51,6 +51,15 @@ class VisualizationTransportStats {
 
   Duration get recommendedDelay => _recommendedDelay;
 
+  void reset() {
+    _wallIntervalWindow.clear();
+    _engineIntervalWindow.clear();
+    _timingErrorWindow.clear();
+    _recommendedDelay = Duration.zero;
+    _lastArrivalTime = null;
+    _lastEventEngineTime = null;
+  }
+
   Duration get averageInterval => _engineIntervalWindow.averageInterval;
 
   Duration get averageWallInterval => _wallIntervalWindow.averageInterval;
@@ -126,10 +135,7 @@ class VisualizationTransportStats {
   }
 
   void _reset({required Duration eventEngineTime, required Duration wallTime}) {
-    _wallIntervalWindow.clear();
-    _engineIntervalWindow.clear();
-    _timingErrorWindow.clear();
-    _recommendedDelay = Duration.zero;
+    reset();
     _lastArrivalTime = wallTime;
     _lastEventEngineTime = eventEngineTime;
   }

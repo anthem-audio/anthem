@@ -38,11 +38,8 @@ class GraphProcessContextTest : public juce::UnitTest {
         graph_test_helpers::makePort(1, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(3,
-        nodeId,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
+        3, nodeId, NodePortDataType::control, graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, nodeId, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -235,9 +232,9 @@ public:
     beginTest("Node contexts bind ports, parameters, and live note allocation");
 
     constexpr int64_t nodeId = 10;
-    constexpr int64_t inputPortId = GainProcessorModelBase::audioInputPortId;
-    constexpr int64_t outputPortId = GainProcessorModelBase::audioOutputPortId;
-    constexpr int64_t gainPortId = GainProcessorModelBase::gainPortId;
+    constexpr int64_t inputPortId = GainProcessor::audioInputPortId;
+    constexpr int64_t outputPortId = GainProcessor::audioOutputPortId;
+    constexpr int64_t gainPortId = GainProcessor::gainPortId;
 
     auto node = graph_test_helpers::makeGainNode(nodeId);
     node->audioInputPorts()->push_back(
@@ -247,7 +244,6 @@ public:
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(gainPortId,
         nodeId,
         NodePortDataType::control,
-        0.25,
         graph_test_helpers::makeParameterConfig(101, 0.25)));
 
     EngineRuntimeServices rtServices;

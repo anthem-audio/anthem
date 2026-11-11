@@ -91,7 +91,7 @@ NodePortModel _parameterPort({
       dataType: NodePortDataType.control,
       parameterConfig: ParameterConfigModel(
         id: 1,
-        defaultValue: defaultValue,
+        factoryDefaultValue: defaultValue,
         displayMode: displayMode,
         unitLabel: unitLabel,
       ),

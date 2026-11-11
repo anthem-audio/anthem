@@ -17,4 +17,4 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-const String anthemVersion = '0.0.0-prealpha.1';
+const String anthemVersion = '0.0.0-prealpha.2';

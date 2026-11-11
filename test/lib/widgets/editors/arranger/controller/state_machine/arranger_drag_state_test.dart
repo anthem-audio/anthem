@@ -117,34 +117,31 @@ void main() {
       },
     );
 
-    test(
-      'pointer up clears resize-handle drag parameters without crossing activation distance',
-      () {
-        fixture.viewModel.visibleResizeAreas.add(
-          rect: const Rect.fromLTWH(96, 10, 14, 40),
-          metadata: (id: ClipIds.underResizeHandle, type: ResizeAreaType.start),
-        );
+    test('pointer up clears resize-handle drag parameters without crossing activation distance', () {
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(96, 10, 14, 40),
+        metadata: (id: ClipIds.underResizeHandle, type: ResizeAreaType.start),
+      );
 
-        fixture.pointerDown(
-          const PointerDownEvent(
-            pointer: 1,
-            buttons: kPrimaryMouseButton,
-            position: Offset(100, 20),
-          ),
-        );
-        expect(
-          fixture.dragState.dragStartContext?.resizeHandleTarget?.metadata.id,
-          ClipIds.underResizeHandle,
-        );
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(100, 20),
+        ),
+      );
+      expect(
+        fixture.dragState.dragStartContext?.resizeHandleTarget?.metadata.id,
+        ClipIds.underResizeHandle,
+      );
 
-        fixture.pointerUp(
-          const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
-        );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
+      );
 
-        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-        expect(fixture.dragState.dragStartContext, isNull);
-      },
-    );
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.dragState.dragStartContext, isNull);
+    });
 
     test('pointer cancel clears drag parameters', () {
       fixture.viewModel.visibleClips.add(

@@ -29,9 +29,11 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:anthem/widgets/editors/device_rack/devices/vst3_device.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+
+import '../../../../../helpers/parameter_engine.dart';
 
 void main() {
   testWidgets('shows a placeholder in the recent parameter slot', (
@@ -60,32 +62,24 @@ void main() {
     expect(find.text('Engine is not running'), findsNothing);
     expect(find.text('Filter cutoff'), findsNWidgets(2));
     expect(knobs, hasLength(4));
-    expect(knobs.every((knob) => knob.parameter != null), isTrue);
+    expect(knobs.every((knob) => knob.parameterBinding != null), isTrue);
   });
 
-  testWidgets('updates parameter model while the engine is stopped', (
+  testWidgets('preserves the cached parameter while the engine is stopped', (
     tester,
   ) async {
     final result = await _pumpDevice(tester, engineState: EngineState.stopped);
-    final cutoffPort = result.node.controlInputPorts.first;
-    final cutoffParameter = _firstParameterBinding(result.node);
-
-    cutoffParameter.beginChange();
-    cutoffParameter.updateChange(0.25);
-    cutoffParameter.commitChange();
+    final port = result.node.controlInputPorts.first;
+    final parameter = _firstParameterBinding(result.node);
+    expect(parameter.canEdit, isFalse);
+    parameter.beginChange();
+    parameter.updateChange(0.25);
+    await parameter.commitChange();
+    await result.project.undo();
     await tester.pump();
-
-    expect(cutoffPort.parameterValue, 0.25);
-    expect(result.node.lastChangedControlPortId, 100);
-    expect(find.text('Engine is not running'), findsNothing);
-
-    result.project.undo();
-    await tester.pump();
-    expect(cutoffPort.parameterValue, 0.76);
-
-    result.project.redo();
-    await tester.pump();
-    expect(cutoffPort.parameterValue, 0.25);
+    expect(port.parameterValue, 0.76);
+    expect(port.pendingParameterValue, isNull);
+    expect(result.node.lastChangedControlPortId, isNull);
   });
 
   testWidgets('filters parameter rows while typing', (tester) async {
@@ -113,7 +107,7 @@ void main() {
     expect(find.text('Filter cutoff'), findsOneWidget);
     expect(find.text('25.0%'), findsNothing);
 
-    _changeFirstParameterValue(result.node, 0.25);
+    await _changeFirstParameterValue(result.node, 0.25);
     await tester.pump();
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
@@ -130,7 +124,7 @@ void main() {
     expect(find.text('Filter cutoff'), findsOneWidget);
 
     cutoffParameter.beginChange();
-    cutoffParameter.commitChange();
+    await cutoffParameter.commitChange();
     await tester.pump();
 
     expect(cutoffPort.parameterValue, 0.76);
@@ -145,17 +139,17 @@ void main() {
 
     cutoffParameter.beginChange();
     cutoffParameter.updateChange(0.25);
-    cutoffParameter.commitChange();
+    await cutoffParameter.commitChange();
     await tester.pump();
 
     expect(cutoffPort.parameterValue, 0.25);
 
-    result.project.undo();
+    await result.project.undo();
     await tester.pump();
     expect(cutoffPort.parameterValue, 0.76);
 
-    result.project.redo();
-    await tester.pump();
+    await result.project.redo();
+    await tester.pump(const Duration(seconds: 1));
     expect(cutoffPort.parameterValue, 0.25);
   });
 
@@ -181,12 +175,46 @@ void main() {
     expect(cutoffKnob.hoverHintOverride?.call(0), 'Filter cutoff: 76.0%');
     expect(cutoffKnob.hint?.call(0.25), 'Filter cutoff: 25.0%');
   });
+
+  testWidgets('shows reactive status text until a parameter value is known', (
+    tester,
+  ) async {
+    final result = await _pumpDevice(tester, engineState: EngineState.stopped);
+    final port = result.node.controlInputPorts.first;
+    port.parameterValue = null;
+    await tester.pump();
+    expect(find.text('Waiting for engine...'), findsOneWidget);
+    expect(find.text('76.0%'), findsNothing);
+
+    result.project.engineState = EngineState.running;
+    await tester.pump();
+    expect(find.text('Initializing...'), findsOneWidget);
+
+    result.node.markInitializationFailed();
+    await tester.pump();
+    expect(find.text('Value unavailable'), findsOneWidget);
+
+    result.node.resetEngineInitialization();
+    result.node.markInitialized();
+    await tester.pump();
+    expect(find.text('Value unavailable'), findsOneWidget);
+
+    port.parameterValue = 0.25;
+    await tester.pump();
+    expect(find.text('25.0%'), findsOneWidget);
+    expect(find.text('Value unavailable'), findsNothing);
+
+    result.project.engineState = EngineState.stopped;
+    result.node.resetEngineInitialization();
+    await tester.pump();
+    expect(find.text('25.0%'), findsOneWidget);
+  });
 }
 
 Knob _firstParameterKnob(WidgetTester tester) {
   return tester
       .widgetList<Knob>(find.byType(Knob))
-      .firstWhere((knob) => knob.parameter != null);
+      .firstWhere((knob) => knob.parameterBinding != null);
 }
 
 ParameterUiBinding _firstParameterBinding(NodeModel node) {
@@ -196,12 +224,12 @@ ParameterUiBinding _firstParameterBinding(NodeModel node) {
   return ParameterUiBinding(node: node, port: port);
 }
 
-void _changeFirstParameterValue(NodeModel node, double value) {
+Future<void> _changeFirstParameterValue(NodeModel node, double value) async {
   final parameter = _firstParameterBinding(node);
 
   parameter.beginChange();
   parameter.updateChange(value);
-  parameter.commitChange();
+  await parameter.commitChange();
 }
 
 class _PumpedDevice {
@@ -221,9 +249,9 @@ Future<_PumpedDevice> _pumpDevice(
 }) async {
   final project = ProjectModel.create();
   ServiceRegistry.initializeProject(project);
-  addTearDown(() {
+  addTearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
   project.engineState = engineState;
 
@@ -256,9 +284,11 @@ Future<_PumpedDevice> _pumpDevice(
       defaultValue: 0.50,
     ),
   ]);
-  node.lastChangedControlPortId = lastChangedControlPortId;
 
   project.processingGraph.addNode(node);
+  final testEngine = installParameterTestEngine(project);
+  if (engineState != EngineState.running) await testEngine.dispose();
+  node.lastChangedControlPortId = lastChangedControlPortId;
   final device = DeviceModel(
     idAllocator: project.idAllocator,
     name: 'Test Plugin',
@@ -298,7 +328,7 @@ NodePortModel _createParameterPort({
       name: name,
       parameterConfig: ParameterConfigModel(
         id: id,
-        defaultValue: defaultValue,
+        factoryDefaultValue: defaultValue,
         displayMode: displayMode,
         unitLabel: unitLabel,
       ),

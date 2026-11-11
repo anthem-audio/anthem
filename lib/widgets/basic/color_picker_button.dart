@@ -86,9 +86,8 @@ class _ColorPickerButtonState extends State<ColorPickerButton> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(
-                                0xFF000000,
-                              ).withValues(alpha: 0.25),
+                              color: const Color(0xFF000000)
+                                  .withValues(alpha: 0.25),
                               blurRadius: 14,
                             ),
                           ],

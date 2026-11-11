@@ -26,9 +26,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
       fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
 
       return (clip: clip, pattern: pattern);
@@ -102,44 +100,46 @@ void main() {
       },
     );
 
-    test('hover over clip-adjacent divider does not show cursor location', () {
-      final trackPosition = fixture.viewModel.trackPositionCalculator
-          .getTrackPosition(0);
-      final trackHeight = fixture.viewModel.trackPositionCalculator
-          .getTrackHeight(0);
-      final dividerY = trackPosition + trackHeight - 1;
+    test('hover over a divider resolves to its resized row', () {
+      final trackLayout = fixture.viewModel.trackLayout;
+      final firstRow = trackLayout.rowLayoutAt(0);
+      final divider = trackLayout.dividerLayouts[0];
+      final dividerY = divider.bounds.center.dy;
 
       fixture.viewModel.visibleClips.add(
-        rect: Rect.fromLTRB(110, trackPosition, 150, dividerY),
+        rect: Rect.fromLTRB(
+          110,
+          firstRow.contentSpan.top,
+          150,
+          firstRow.contentSpan.bottom,
+        ),
         metadata: ClipIds.underCursor,
       );
 
-      expect(
-        fixture.viewModel.trackPositionCalculator.rowAtPosition(dividerY),
-        isNull,
-      );
-      final borderIncludedHit = fixture.viewModel.trackPositionCalculator
-          .rowAtPosition(dividerY, includeBorder: true);
-      expect(borderIncludedHit, isNotNull);
-      expect(borderIncludedHit!.rowIndex, 0);
+      final rowHit = trackLayout.rowLayoutAtContentY(dividerY);
+      expect(rowHit, isNotNull);
+      expect(rowHit!.rowIndex, 0);
 
-      fixture.hover(Offset(120, dividerY - 1));
+      fixture.hover(Offset(120, firstRow.contentSpan.bottom - 1));
       expect(fixture.viewModel.hoverIndicatorPosition, isNull);
       expect(fixture.viewModel.hoveredClip, ClipIds.underCursor);
 
       fixture.hover(Offset(120, dividerY));
-      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
+      expect(fixture.viewModel.hoverIndicatorPosition?.rowId, TrackIds.a);
       expect(fixture.viewModel.hoveredClip, isNull);
     });
 
     test('hover on first pixel of next row uses next row', () {
-      final nextTrackPosition = fixture.viewModel.trackPositionCalculator
-          .getTrackPosition(1);
+      final nextTrackPosition = fixture.viewModel.trackLayout
+          .rowLayoutAt(1)
+          .contentSpan
+          .top;
 
-      final borderIncludedHit = fixture.viewModel.trackPositionCalculator
-          .rowAtPosition(nextTrackPosition, includeBorder: true);
-      expect(borderIncludedHit, isNotNull);
-      expect(borderIncludedHit!.rowIndex, 1);
+      final rowHit = fixture.viewModel.trackLayout.rowLayoutAtContentY(
+        nextTrackPosition,
+      );
+      expect(rowHit, isNotNull);
+      expect(rowHit!.rowIndex, 1);
 
       fixture.hover(Offset(120, nextTrackPosition));
 
@@ -669,30 +669,27 @@ void main() {
       expect(bodyResizeContext.resizeHandleTarget?.metadata.id, clip.id);
     });
 
-    test(
-      'hover leaving clip restores timeline cursor location and clears hovered clip',
-      () {
-        fixture.viewModel.visibleClips.add(
-          rect: const Rect.fromLTWH(110, 15, 40, 30),
-          metadata: ClipIds.underCursor,
-        );
+    test('hover leaving clip restores timeline cursor location and clears hovered clip', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: ClipIds.underCursor,
+      );
 
-        fixture.hover(const Offset(120, 20));
-        expect(fixture.viewModel.hoverIndicatorPosition, isNull);
-        expect(fixture.viewModel.hoveredClip, ClipIds.underCursor);
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
+      expect(fixture.viewModel.hoveredClip, ClipIds.underCursor);
 
-        fixture.hover(const Offset(200, 20));
-        expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
-        expect(
-          trackIdForRowId(
-            fixture.viewModel,
-            fixture.viewModel.hoverIndicatorPosition!.rowId,
-          ),
-          TrackIds.a,
-        );
-        expect(fixture.viewModel.hoveredClip, isNull);
-      },
-    );
+      fixture.hover(const Offset(200, 20));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
+      expect(
+        trackIdForRowId(
+          fixture.viewModel,
+          fixture.viewModel.hoverIndicatorPosition!.rowId,
+        ),
+        TrackIds.a,
+      );
+      expect(fixture.viewModel.hoveredClip, isNull);
+    });
 
     test('exit clears hover-derived cursor location and hovered clip', () {
       fixture.enter(const Offset(120, 20));
@@ -790,6 +787,32 @@ void main() {
       expect(after, isNot(equals(before)));
     });
 
+    test(
+      'rendered vertical scroll maps viewport positions to content rows',
+      () {
+        fixture.viewModel.baseTrackHeight = 100;
+        fixture.viewModel.refreshTrackLayout(
+          ArrangerStateMachineTestFixture.editorHeight,
+        );
+        fixture.viewModel.verticalScrollPosition = 60;
+        fixture.controller.onRenderedViewTransformChanged(
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
+          verticalScrollPosition: 60,
+        );
+
+        fixture.hover(const Offset(120, 50));
+
+        expect(
+          trackIdForRowId(
+            fixture.viewModel,
+            fixture.viewModel.hoverIndicatorPosition!.rowId,
+          ),
+          TrackIds.b,
+        );
+      },
+    );
+
     test('track layout changed recomputes cursor location', () {
       fixture.hover(const Offset(120, 20));
       expect(
@@ -803,7 +826,7 @@ void main() {
       fixture.project.trackOrder
         ..clear()
         ..addAll([TrackIds.b, TrackIds.a]);
-      fixture.viewModel.trackPositionCalculator.invalidate(
+      fixture.viewModel.refreshTrackLayout(
         ArrangerStateMachineTestFixture.editorHeight,
       );
       fixture.controller.onTrackLayoutChanged();
@@ -1164,9 +1187,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
@@ -1222,9 +1243,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),

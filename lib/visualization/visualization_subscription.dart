@@ -68,19 +68,6 @@ class VisualizationSubscriptionConfig<T> {
     );
   }
 
-  /// Subscribe to the most recent string value for this visualization item.
-  static VisualizationSubscriptionConfig<String> latestString(
-    String id, {
-    VisualizationBufferMode bufferMode = VisualizationBufferMode.none,
-  }) {
-    return VisualizationSubscriptionConfig<String>._(
-      id: id,
-      type: VisualizationSubscriptionType.latest,
-      bufferMode: bufferMode,
-      visualizationType: stringVisualizationType,
-    );
-  }
-
   /// Subscribe to the maximum value for this visualization item since the last
   /// read or rendered frame.
   static VisualizationSubscriptionConfig<double> max(
@@ -125,6 +112,7 @@ abstract class _VisualizationSubscriptionBase {
   void _setOverrideValue(Object value, Duration duration);
   void _engineStarted();
   void _engineStopped();
+  void _transportDiscontinuity();
   void dispose();
 }
 
@@ -423,6 +411,22 @@ abstract class VisualizationSubscription<T>
         ? Duration.zero
         : newestEngineTime - _renderEngineTime!;
 
+    if (_renderEngineTime != null &&
+        currentAhead > targetDelay + visualizationHistoryDuration) {
+      _renderEngineTime = _sampleBuffer.clampEngineTime(
+        newestEngineTime - targetDelay,
+      );
+      // Retain recent unseen peaks without replaying consumed or stale
+      // history when rendering resumes after a long pause.
+      final recoveryStart = _renderEngineTime! - visualizationHistoryDuration;
+      if (_lastConsumedRenderTimeForMax == null ||
+          _lastConsumedRenderTimeForMax! < recoveryStart) {
+        _lastConsumedRenderTimeForMax = recoveryStart;
+      }
+      _setBufferState(_VisualizationBufferState.steady);
+      return _renderCurrentBufferedValue();
+    }
+
     if (_renderEngineTime == null) {
       // Do not begin rendering until enough data exists to satisfy the current
       // target delay without immediately underrunning.
@@ -666,6 +670,27 @@ abstract class VisualizationSubscription<T>
     }
 
     scheduleMicrotask(_emitUpdate);
+  }
+
+  @override
+  void _transportDiscontinuity() {
+    // Delivery gaps, missed records, and audio configuration changes invalidate
+    // buffered visualization history and timing anchors. This callback concerns
+    // visualization delivery, rather than a seek in the musical transport.
+    // Preserve UI overrides and unbuffered latest values while discarding old
+    // buffered samples and meter peaks.
+    if (!_hasAdaptiveBuffering &&
+        _config.type == VisualizationSubscriptionType.latest) {
+      _clearConsumedEngineTimeAnchor();
+      return;
+    }
+    _sourceValue = null;
+    _sourceEngineTime = null;
+    _value = null;
+    _engineTime = null;
+    _shouldReset = true;
+    _clearConsumedEngineTimeAnchor();
+    if (_hasAdaptiveBuffering) _resetAdaptiveState();
   }
 
   @override

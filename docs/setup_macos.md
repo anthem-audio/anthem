@@ -30,12 +30,13 @@ export ANTHEM_LLVM_BIN="$(brew --prefix llvm@22)/bin"
 4. Run `flutter pub get` in the repository root.
 5. Run `dart run anthem:cli codegen generate` to create or update generated code.
 6. Run `dart run anthem:cli engine build --debug`. This will build the engine executable.
-7. Use the following commands to format and lint engine C++ code:
+7. Run `dart run anthem:cli engine build-lame` to build the MP3 encoder and copy it to `assets/engine/`. This is required for MP3 export and release builds; you can skip it during development if you do not need MP3 export. Re-run this command after updating the LAME submodule.
+8. Use the following commands to format and lint engine C++ code:
    - `dart run anthem:cli engine format`
    - `dart run anthem:cli engine lint`
-8. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-9. To keep the generated code updated with the source, you have two options:
+9. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+10. To keep the generated code updated with the source, you have two options:
    1. Open a new terminal session and run `dart run anthem:cli codegen generate --root-only --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
    2. Run `dart run anthem:cli codegen generate --root-only` manually after modifying the model or the IPC messages. This method is a bit more surgical during update, and as a result, C++ build times may be faster when updating generated code with this method.
    - Note: you may need to clean and re-run code generation in order to re-generate the files for the IPC messages if they are changed, since they sometimes don't re-generate automatically. There is a note that prints when running the codegen command above which has more info about this.
-10. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+11. Use `flutter run` to run Anthem, or start Anthem via your IDE.

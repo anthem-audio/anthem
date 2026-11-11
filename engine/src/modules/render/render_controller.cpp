@@ -72,14 +72,15 @@ RenderStartResult renderStartFailure(const std::string& error) {
   };
 }
 
-std::optional<int64_t> getActiveArrangementId() {
+std::optional<int64_t> getArrangementId() {
   auto& engine = Engine::getInstance();
 
   if (engine.project == nullptr || engine.project->sequence() == nullptr) {
     return std::nullopt;
   }
 
-  return engine.project->sequence()->activeArrangementID();
+  auto arrangement = engine.project->sequence()->arrangement();
+  return arrangement == nullptr ? std::nullopt : std::make_optional(arrangement->id());
 }
 
 std::shared_ptr<MasterOutputProcessor> getMasterOutputProcessor() {
@@ -98,12 +99,9 @@ std::shared_ptr<MasterOutputProcessor> getMasterOutputProcessor() {
     return nullptr;
   }
 
-  auto masterOutputProcessorOpt = masterOutputNodeIter->second->getProcessor();
-  if (!masterOutputProcessorOpt.has_value()) {
-    return nullptr;
-  }
+  auto masterOutputModelProcessor = masterOutputNodeIter->second->getProcessor();
 
-  return std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
+  return std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputModelProcessor);
 }
 
 bool containsInt(std::initializer_list<int64_t> values, int64_t value) {
@@ -284,36 +282,32 @@ RenderController::~RenderController() {
 }
 
 void RenderController::sendRenderStartedEvent(int64_t renderId) {
-  Response response =
-      RenderStartedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderStartedEvent{.renderId = renderId};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderProgressEvent(int64_t renderId, double progress) {
-  Response response = RenderProgressEvent{.renderId = renderId,
-      .progress = std::clamp(progress, 0.0, 1.0),
-      .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event =
+      RenderProgressEvent{.renderId = renderId, .progress = std::clamp(progress, 0.0, 1.0)};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderCompletedEvent(int64_t renderId) {
-  Response response =
-      RenderCompletedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderCompletedEvent{.renderId = renderId};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderFailedEvent(int64_t renderId, const std::string& error) {
-  Response response = RenderFailedEvent{
-      .renderId = renderId, .error = error, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderFailedEvent{.renderId = renderId, .error = error};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 RenderStartResult RenderController::startRender(const RenderStartOptions& options) {
@@ -364,10 +358,10 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
     return renderStartFailure("No audio processing config is active.");
   }
 
-  const auto activeArrangementId = getActiveArrangementId();
-  if (!activeArrangementId.has_value()) {
+  const auto arrangementId = getArrangementId();
+  if (!arrangementId.has_value()) {
     isRenderingFlag.store(false, std::memory_order_release);
-    return renderStartFailure("No active arrangement is selected for render.");
+    return renderStartFailure("The project arrangement is not available for render.");
   }
 
   auto masterOutputProcessor = getMasterOutputProcessor();
@@ -384,7 +378,7 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
   auto renderJob = RenderJob{.renderId = options.renderId,
       .outputPath = options.outputPath,
       .format = options.format,
-      .activeSequenceId = activeArrangementId.value(),
+      .activeSequenceId = arrangementId.value(),
       .startTick = options.startTick,
       .endTick = options.endTick,
       .includeTail = options.includeTail,

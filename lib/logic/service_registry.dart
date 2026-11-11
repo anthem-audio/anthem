@@ -19,14 +19,18 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/application_settings.dart';
 import 'package:anthem/logic/clipboard/clipboard_service.dart';
 import 'package:anthem/logic/device_controller.dart';
 import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -48,8 +52,10 @@ export 'package:anthem/logic/disposable_service.dart';
 /// Project-scoped controllers and view models are owned here and created lazily
 /// on first access. Widgets should consume them from this registry rather than
 /// constructing or disposing them directly.
-typedef ServiceFactory<T extends Object> =
-    T Function(ProjectModel project, ServiceRegistry registry);
+typedef ServiceFactory<T extends Object> = T Function(
+  ProjectModel project,
+  ServiceRegistry registry,
+);
 
 class ServiceDef<T extends Object> {
   final ServiceFactory<T> create;
@@ -78,21 +84,39 @@ final projectViewModelService = ServiceDef<ProjectViewModel>(
   create: (_, _) => ProjectViewModel(),
 );
 
+final projectStorageService = ServiceDef<ProjectStorage>(
+  create: (project, _) => ProjectStorage.temporary(),
+);
+
+final savedProjectFilesService = ServiceDef<SavedProjectFiles>(
+  create: (_, registry) =>
+      SavedProjectFiles(registry.use(projectStorageService)),
+);
+
 final projectControllerService = ServiceDef<ProjectController>(
   create: (project, registry) =>
       ProjectController(project, registry.use(projectViewModelService)),
   disposePriority: 100,
 );
 
+final processingGraphControllerService = ServiceDef<ProcessingGraphController>(
+  create: (project, _) => ProcessingGraphController(project),
+  disposePriority: 100,
+);
+
 final projectEngineControllerService = ServiceDef<ProjectEngineController>(
-  create: (project, registry) =>
-      ProjectEngineController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectEngineController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 110,
 );
 
 final projectRenderControllerService = ServiceDef<ProjectRenderController>(
-  create: (project, registry) =>
-      ProjectRenderController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectRenderController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 100,
 );
 
@@ -112,11 +136,7 @@ final parameterControllerService = ServiceDef<ParameterController>(
 );
 
 final arrangerViewModelService = ServiceDef<ArrangerViewModel>(
-  create: (project, _) => ArrangerViewModel(
-    project: project,
-    baseTrackHeight: 53,
-    timeRange: TimeRange(0, 3072),
-  ),
+  create: (project, _) => ArrangerViewModel(project: project),
 );
 
 final arrangerControllerService = ServiceDef<ArrangerController>(
@@ -180,12 +200,39 @@ class ServiceRegistry {
   static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static final DialogController dialogController = DialogController();
   static final ClipboardService clipboard = ClipboardService();
-  static late final ScreenOverlayController screenOverlayController;
+  static ScreenOverlayController? _screenOverlayController;
+
+  static ScreenOverlayController get screenOverlayController =>
+      _screenOverlayController ??
+      (throw StateError('The screen overlay is not mounted.'));
+
+  static set screenOverlayController(ScreenOverlayController controller) {
+    _screenOverlayController = controller;
+  }
+
+  static void detachScreenOverlay(ScreenOverlayController controller) {
+    if (identical(_screenOverlayController, controller)) {
+      _screenOverlayController = null;
+    }
+  }
+
+  /// Settings belong to the current application session. Null uses the native
+  /// store; an explicit instance lets a session supply isolated storage.
+  static void setSessionPreferences(SharedPreferencesAsync? preferences) {
+    _preferences = preferences;
+    _applicationSettings = null;
+  }
+
   static SharedPreferencesAsync? _preferences;
 
   static SharedPreferencesAsync get preferences {
     return _preferences ??= SharedPreferencesAsync();
   }
+
+  static ApplicationSettings? _applicationSettings;
+
+  static ApplicationSettings get applicationSettings =>
+      _applicationSettings ??= ApplicationSettings(preferences);
 
   static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
       {};
@@ -244,6 +291,10 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProcessingGraphController get processingGraphController =>
+      use(processingGraphControllerService);
+  ProjectStorage get projectStorage => use(projectStorageService);
+  SavedProjectFiles get savedProjectFiles => use(savedProjectFilesService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);
   ProjectRenderController get projectRenderController =>

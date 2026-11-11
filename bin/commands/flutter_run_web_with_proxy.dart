@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -40,8 +40,7 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
   FlutterRunWebWithProxyCommand() {
     argParser.addFlag(
       'serve-existing-build',
-      help:
-          'Serve (packageRoot)/build/web with dhttpd behind the proxy instead of running "flutter run".',
+      help: 'Serve (packageRoot)/build/web with dhttpd behind the proxy instead of running "flutter run".',
       negatable: false,
     );
 
@@ -79,9 +78,8 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
       '${Colorize('The proxy server will be started at').lightGreen()} http://localhost:$proxyPort',
     );
     print(
-      Colorize(
-        'Copy this link if needed, then press enter to continue...',
-      ).lightGreen(),
+      Colorize('Copy this link if needed, then press enter to continue...')
+          .lightGreen(),
     );
     stdin.readLineSync();
 

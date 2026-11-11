@@ -25,6 +25,8 @@ import 'package:mobx/mobx.dart';
 
 import 'node.dart';
 import 'node_connection.dart';
+import 'node_port.dart';
+import 'node_port_config.dart';
 
 part 'processing_graph.g.dart';
 
@@ -32,8 +34,8 @@ part 'processing_graph.g.dart';
 ///
 /// This is used by undo/redo commands and by logic that needs to prepare a set
 /// of nodes and connections before adding them to the graph. Keeping the
-/// original model objects around also preserves transient state such as
-/// third-party plugin state.
+/// original model objects preserves their cached values and UI state. Commands
+/// manage file retentions separately while nodes are removed from the graph.
 class ProcessingGraphFragment {
   final List<NodeModel> nodes;
   final List<NodeConnectionModel> connections;
@@ -145,6 +147,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes the given nodes from the graph while capturing all removed nodes
   /// and connections so they can be restored later.
+  ///
+  /// The caller manages the removed nodes' file retentions.
   ProcessingGraphFragment removeNodesAndCapture(Iterable<Id> nodeIds) {
     final fragment = captureNodes(nodeIds);
     if (fragment.isEmpty) {
@@ -156,6 +160,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     }
 
     for (final node in fragment.nodes) {
+      node.resetEngineInitialization();
       nodes.remove(node.id);
     }
 
@@ -163,6 +168,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   /// Restores a fragment into the graph.
+  ///
+  /// Restore the nodes' project file retentions before inserting the fragment.
   void restoreGraphFragment(ProcessingGraphFragment fragment) {
     for (final node in fragment.nodes) {
       if (nodes[node.id] != null) {
@@ -197,66 +204,121 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes a node from the graph, and removes all connections to and from the
   /// node.
+  ///
+  /// The caller must release any project file retentions owned by the node.
   void removeNode(Id nodeId) {
     final node = nodes[nodeId];
 
     if (node == null) return;
 
-    for (final port in node.getAllPorts()) {
-      // We copy the list of connections here so we can modify the original
-      // without a concurrent modification error
-      for (final connectionId in [...port.connections]) {
-        removeConnection(connectionId);
-      }
+    final touching = connections.values
+        .where(
+          (connection) =>
+              connection.sourceNodeId == nodeId ||
+              connection.destinationNodeId == nodeId,
+        )
+        .map((connection) => connection.id)
+        .toList();
+    for (final id in touching) {
+      removeConnection(id);
     }
 
     nodes.remove(nodeId);
   }
 
   void addConnection(NodeConnectionModel connection) {
-    final sourceNode =
-        nodes[connection.sourceNodeId] ??
-        (throw StateError(
-          'Could not add connection: source node '
-          '${connection.sourceNodeId} not found.',
-        ));
-    final destinationNode =
-        nodes[connection.destinationNodeId] ??
-        (throw StateError(
-          'Could not add connection: destination node '
-          '${connection.destinationNodeId} not found.',
-        ));
+    if (!nodes.containsKey(connection.sourceNodeId)) {
+      throw StateError(
+        'Could not add connection: source node ${connection.sourceNodeId} not found.',
+      );
+    }
+    if (!nodes.containsKey(connection.destinationNodeId)) {
+      throw StateError(
+        'Could not add connection: destination node ${connection.destinationNodeId} not found.',
+      );
+    }
 
-    final sourcePort = sourceNode.getOutputPortById(
-      connection.dataType,
-      connection.sourcePortId,
-    );
-    final destinationPort = destinationNode.getInputPortById(
-      connection.dataType,
-      connection.destinationPortId,
-    );
-
+    // Cached endpoints remain valid routing references until discovery confirms
+    // their availability. Compilation selects the usable connections.
     connections[connection.id] = connection;
-    sourcePort.connections.add(connection.id);
-    destinationPort.connections.add(connection.id);
+    _attachConnection(connection);
+  }
+
+  NodePortModel _connectionPort(
+    NodeModel node,
+    NodePortDataType type,
+    int id, {
+    required bool input,
+  }) {
+    final ports = input
+        ? node.getInputPortsByType(type)
+        : node.getOutputPortsByType(type);
+    for (final port in ports) {
+      if (port.id == id) return port;
+    }
+    final port = NodePortModel(
+      id: id,
+      nodeId: node.id,
+      config: NodePortConfigModel(dataType: type),
+    );
+    ports.add(port);
+    return port;
+  }
+
+  void _attachConnection(NodeConnectionModel connection) {
+    final source = nodes[connection.sourceNodeId];
+    final destination = nodes[connection.destinationNodeId];
+    if (source == null || destination == null) return;
+    for (final port in [
+      _connectionPort(
+        source,
+        connection.dataType,
+        connection.sourcePortId,
+        input: false,
+      ),
+      _connectionPort(
+        destination,
+        connection.dataType,
+        connection.destinationPortId,
+        input: true,
+      ),
+    ]) {
+      if (!port.connections.contains(connection.id)) {
+        port.connections.add(connection.id);
+      }
+    }
+  }
+
+  /// Whether both endpoints are currently confirmed by the engine.
+  bool isConnectionResolved(NodeConnectionModel connection) {
+    final source = nodes[connection.sourceNodeId];
+    final destination = nodes[connection.destinationNodeId];
+    if (source == null || destination == null) return false;
+    return source
+            .getOutputPortsByType(connection.dataType)
+            .any(
+              (port) => port.id == connection.sourcePortId && port.isAvailable,
+            ) &&
+        destination
+            .getInputPortsByType(connection.dataType)
+            .any(
+              (port) =>
+                  port.id == connection.destinationPortId && port.isAvailable,
+            );
   }
 
   void removeConnection(Id connectionId) {
-    final connection = connections[connectionId]!;
-    final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getOutputPortById(
-      connection.dataType,
-      connection.sourcePortId,
-    );
-    sourceNodePort.connections.removeWhere((e) => e == connectionId);
-
-    final destinationNode = nodes[connection.destinationNodeId]!;
-    final destinationNodePort = destinationNode.getInputPortById(
-      connection.dataType,
-      connection.destinationPortId,
-    );
-    destinationNodePort.connections.removeWhere((e) => e == connectionId);
-
+    final connection = connections[connectionId];
+    if (connection == null) return;
+    for (final node in [
+      nodes[connection.sourceNodeId],
+      nodes[connection.destinationNodeId],
+    ]) {
+      if (node == null) continue;
+      for (final port in node.getAllPorts()) {
+        port.connections.removeWhere((id) => id == connectionId);
+      }
+    }
     connections.remove(connectionId);
   }
 

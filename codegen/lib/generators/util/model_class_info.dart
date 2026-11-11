@@ -220,7 +220,10 @@ class _MyModel {
     //   continue;
     // }
 
-    for (final field in _baseClass?.fields ?? <FieldElement>[]) {
+    final baseFields = annotatedClass.isSealed
+        ? _inheritedFields(_baseClass)
+        : _baseClass?.fields ?? <FieldElement>[];
+    for (final field in baseFields) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
@@ -256,16 +259,20 @@ class _MyModel {
 
     isSealed = annotatedClass.isSealed;
 
-    final List<ClassElement> subclasses = [];
-
-    for (var element in libraryReader.classes) {
-      if (element.supertype?.element == annotatedClass) {
-        subclasses.add(element);
+    if (isSealed) {
+      void collectSubclasses(ClassElement parent) {
+        for (final element in libraryReader.classes) {
+          if (element.supertype?.element != parent) continue;
+          CodegenDependencyTracker.current?.trackElement(element);
+          // Test the most specific runtime types first during serialization.
+          collectSubclasses(element);
+          if (!element.isAbstract) {
+            sealedSubclasses.add(SealedSubclassInfo(element, this));
+          }
+        }
       }
-    }
 
-    for (final subclass in subclasses) {
-      sealedSubclasses.add(SealedSubclassInfo(subclass, this));
+      collectSubclasses(annotatedClass);
     }
 
     _modelClassInfoCache[annotatedClass] = this;
@@ -277,16 +284,39 @@ class SealedSubclassInfo {
   Map<String, ModelFieldInfo> fields = {};
   String get name => subclass.name!;
 
+  /// The annotated sealed ancestor that generates this subtype's C++ struct.
+  late ClassElement cppOwner;
+
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
     CodegenDependencyTracker.current?.trackElement(subclass);
 
-    for (final field in subclass.fields) {
+    cppOwner = baseClassInfo.annotatedClass;
+    var parent = subclass.supertype?.element;
+    while (parent != null && parent != baseClassInfo.annotatedClass) {
+      final annotation = const TypeChecker.typeNamed(
+        AnthemModel,
+        inPackage: 'anthem_codegen',
+      ).firstAnnotationOf(parent);
+      if (parent is ClassElement &&
+          parent.isSealed &&
+          annotation?.getField('generateCpp')?.toBoolValue() == true) {
+        cppOwner = parent;
+        break;
+      }
+      parent = parent.supertype?.element;
+    }
+
+    for (final field in _inheritedFields(
+      subclass,
+      stopBefore: baseClassInfo.annotatedClass,
+    )) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
       if (field.setter == null) continue;
 
       if (_skipAll(field)) continue;
+      if (baseClassInfo.fields.containsKey(field.name)) continue;
 
       fields[field.name!] = ModelFieldInfo(
         fieldElement: field,
@@ -295,6 +325,16 @@ class SealedSubclassInfo {
       );
     }
   }
+}
+
+/// Returns declared fields in superclass order.
+Iterable<FieldElement> _inheritedFields(
+  InterfaceElement? element, {
+  InterfaceElement? stopBefore,
+}) sync* {
+  if (element == null || element == stopBefore) return;
+  yield* _inheritedFields(element.supertype?.element, stopBefore: stopBefore);
+  yield* element.fields;
 }
 
 /// Represents a parsed field in an Anthem model.

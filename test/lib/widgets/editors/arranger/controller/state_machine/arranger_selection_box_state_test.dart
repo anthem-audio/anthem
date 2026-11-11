@@ -213,59 +213,47 @@ void main() {
       expect(after.height, equals(before.height));
     });
 
-    test(
-      'starting drag over selected clip does not latch subtractive mode without shift',
-      () {
-        const downPos = Offset(100, 30);
-        const clipId = ClipIds.selected;
+    test('starting drag over selected clip does not latch subtractive mode without shift', () {
+      const downPos = Offset(100, 30);
+      const clipId = ClipIds.selected;
 
-        fixture.viewModel.visibleClips.add(
-          rect: const Rect.fromLTWH(90, 20, 40, 30),
-          metadata: clipId,
-        );
-        fixture.viewModel.selectedClips.add(clipId);
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(90, 20, 40, 30),
+        metadata: clipId,
+      );
+      fixture.viewModel.selectedClips.add(clipId);
 
-        enterSelectionBoxState(
-          downPos: downPos,
-          movePos: const Offset(160, 80),
-        );
+      enterSelectionBoxState(downPos: downPos, movePos: const Offset(160, 80));
 
-        expect(
-          fixture.stateMachine.currentState,
-          isA<ArrangerSelectionBoxState>(),
-        );
-        expect(
-          fixture.selectionBoxState.isSubtractiveSelectionLatched,
-          isFalse,
-        );
-      },
-    );
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerSelectionBoxState>(),
+      );
+      expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isFalse);
+    });
 
-    test(
-      'starting drag over selected clip latches subtractive selection mode with shift',
-      () {
-        const downPos = Offset(100, 30);
-        const clipId = ClipIds.selected;
+    test('starting drag over selected clip latches subtractive selection mode with shift', () {
+      const downPos = Offset(100, 30);
+      const clipId = ClipIds.selected;
 
-        fixture.viewModel.visibleClips.add(
-          rect: const Rect.fromLTWH(90, 20, 40, 30),
-          metadata: clipId,
-        );
-        fixture.viewModel.selectedClips.add(clipId);
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(90, 20, 40, 30),
+        metadata: clipId,
+      );
+      fixture.viewModel.selectedClips.add(clipId);
 
-        enterSelectionBoxState(
-          downPos: downPos,
-          movePos: const Offset(160, 80),
-          useShiftModifier: true,
-        );
+      enterSelectionBoxState(
+        downPos: downPos,
+        movePos: const Offset(160, 80),
+        useShiftModifier: true,
+      );
 
-        expect(
-          fixture.stateMachine.currentState,
-          isA<ArrangerSelectionBoxState>(),
-        );
-        expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
-      },
-    );
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerSelectionBoxState>(),
+      );
+      expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
+    });
 
     test(
       'starting drag over non-selected clip does not latch subtractive mode',
@@ -311,27 +299,18 @@ void main() {
       expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isFalse);
     });
 
-    test(
-      'without shift selection box clears existing selection and selects clips in box',
-      () {
-        addVisibleClip(
-          id: ClipIds.b,
-          rect: const Rect.fromLTWH(40, 40, 20, 20),
-        );
-        fixture.viewModel.selectedClips.add(ClipIds.a);
+    test('without shift selection box clears existing selection and selects clips in box', () {
+      addVisibleClip(id: ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
+      fixture.viewModel.selectedClips.add(ClipIds.a);
 
-        enterSelectionBoxState(
-          downPos: const Offset(0, 0),
-          movePos: const Offset(80, 80),
-        );
+      enterSelectionBoxState(
+        downPos: const Offset(0, 0),
+        movePos: const Offset(80, 80),
+      );
 
-        expect(
-          fixture.selectionBoxState.isSubtractiveSelectionLatched,
-          isFalse,
-        );
-        expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
-      },
-    );
+      expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isFalse);
+      expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
+    });
 
     test('with shift additive mode selects clips under selection box', () {
       addVisibleClip(id: ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
@@ -350,47 +329,32 @@ void main() {
       );
     });
 
-    test(
-      'without shift drag over selected clip is additive from an empty snapshot',
-      () {
-        addVisibleClip(
-          id: ClipIds.a,
-          rect: const Rect.fromLTWH(20, 20, 30, 30),
-        );
-        fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
+    test('without shift drag over selected clip is additive from an empty snapshot', () {
+      addVisibleClip(id: ClipIds.a, rect: const Rect.fromLTWH(20, 20, 30, 30));
+      fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
 
-        enterSelectionBoxState(
-          downPos: const Offset(25, 25),
-          movePos: const Offset(80, 80),
-        );
+      enterSelectionBoxState(
+        downPos: const Offset(25, 25),
+        movePos: const Offset(80, 80),
+      );
 
-        expect(
-          fixture.selectionBoxState.isSubtractiveSelectionLatched,
-          isFalse,
-        );
-        expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.a}));
-      },
-    );
+      expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isFalse);
+      expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.a}));
+    });
 
-    test(
-      'with shift subtractive mode deselects selected clips under selection box',
-      () {
-        addVisibleClip(
-          id: ClipIds.a,
-          rect: const Rect.fromLTWH(20, 20, 30, 30),
-        );
-        fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
+    test('with shift subtractive mode deselects selected clips under selection box', () {
+      addVisibleClip(id: ClipIds.a, rect: const Rect.fromLTWH(20, 20, 30, 30));
+      fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
 
-        enterSelectionBoxState(
-          downPos: const Offset(25, 25),
-          movePos: const Offset(80, 80),
-          useShiftModifier: true,
-        );
+      enterSelectionBoxState(
+        downPos: const Offset(25, 25),
+        movePos: const Offset(80, 80),
+        useShiftModifier: true,
+      );
 
-        expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
-        expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
-      },
-    );
+      expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
+      expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
+    });
 
     test(
       'without shift additive mode reverts to empty selection when box shrinks',
@@ -419,68 +383,53 @@ void main() {
       },
     );
 
-    test(
-      'with shift additive mode reverts clip to original selection when box shrinks',
-      () {
-        addVisibleClip(
-          id: ClipIds.b,
-          rect: const Rect.fromLTWH(40, 40, 20, 20),
-        );
-        fixture.viewModel.selectedClips.add(ClipIds.a);
+    test('with shift additive mode reverts clip to original selection when box shrinks', () {
+      addVisibleClip(id: ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
+      fixture.viewModel.selectedClips.add(ClipIds.a);
 
-        enterSelectionBoxState(
-          downPos: const Offset(0, 0),
-          movePos: const Offset(80, 80),
-          useShiftModifier: true,
-        );
-        expect(
-          fixture.viewModel.selectedClips.toSet(),
-          equals({ClipIds.a, ClipIds.b}),
-        );
+      enterSelectionBoxState(
+        downPos: const Offset(0, 0),
+        movePos: const Offset(80, 80),
+        useShiftModifier: true,
+      );
+      expect(
+        fixture.viewModel.selectedClips.toSet(),
+        equals({ClipIds.a, ClipIds.b}),
+      );
 
-        fixture.pointerMove(
-          const PointerMoveEvent(
-            pointer: 1,
-            buttons: kPrimaryMouseButton,
-            position: Offset(10, 10),
-          ),
-        );
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(10, 10),
+        ),
+      );
 
-        expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.a}));
-      },
-    );
+      expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.a}));
+    });
 
-    test(
-      'with shift subtractive mode reverts clip to original selection when box shrinks',
-      () {
-        addVisibleClip(
-          id: ClipIds.a,
-          rect: const Rect.fromLTWH(20, 20, 20, 20),
-        );
-        addVisibleClip(
-          id: ClipIds.b,
-          rect: const Rect.fromLTWH(90, 20, 20, 20),
-        );
-        fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
+    test('with shift subtractive mode reverts clip to original selection when box shrinks', () {
+      addVisibleClip(id: ClipIds.a, rect: const Rect.fromLTWH(20, 20, 20, 20));
+      addVisibleClip(id: ClipIds.b, rect: const Rect.fromLTWH(90, 20, 20, 20));
+      fixture.viewModel.selectedClips.addAll({ClipIds.a, ClipIds.b});
 
-        enterSelectionBoxState(
-          downPos: const Offset(25, 25),
-          movePos: const Offset(130, 60),
-          useShiftModifier: true,
-        );
-        expect(fixture.viewModel.selectedClips.toSet(), isEmpty);
+      enterSelectionBoxState(
+        downPos: const Offset(25, 25),
+        movePos: const Offset(130, 60),
+        useShiftModifier: true,
+      );
+      expect(fixture.viewModel.selectedClips.toSet(), isEmpty);
 
-        fixture.pointerMove(
-          const PointerMoveEvent(
-            pointer: 1,
-            buttons: kPrimaryMouseButton,
-            position: Offset(60, 60),
-          ),
-        );
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(60, 60),
+        ),
+      );
 
-        expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
-      },
-    );
+      expect(fixture.viewModel.selectedClips.toSet(), equals({ClipIds.b}));
+    });
 
     test('without shift cancel restores selected clips to empty snapshot', () {
       addVisibleClip(id: ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));

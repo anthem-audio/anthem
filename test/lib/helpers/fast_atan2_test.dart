@@ -20,7 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/fast_atan2.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('fastAtan2', () {

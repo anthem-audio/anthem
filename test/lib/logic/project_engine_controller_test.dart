@@ -24,18 +24,18 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/render/render_range.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _TestEngineConnector extends EngineConnectorBase {
   final Completer<bool> _onInitCompleter = Completer<bool>();
   final void Function()? _onExit;
-  final List<Request> sentRequests = [];
+  final List<IpcMessage> sentRequests = [];
 
   var isDisposed = false;
   var startHeartbeatTimerCallCount = 0;
@@ -43,7 +43,8 @@ class _TestEngineConnector extends EngineConnectorBase {
   _TestEngineConnector({
     required super.kDebugMode,
     super.noHeartbeat = false,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     this._onExit,
   }) {
     onInit = _onInitCompleter.future;
@@ -55,11 +56,15 @@ class _TestEngineConnector extends EngineConnectorBase {
     }
   }
 
-  void emitResponse(Response response) {
+  void emitMessage(IpcMessage response) {
     final payload = utf8.encode(jsonEncode(response.toJson()));
     final framedResponse = Uint8List(payload.length + 8);
     final header = ByteData.sublistView(framedResponse, 0, 8);
-    header.setUint64(0, payload.length, Endian.host);
+    header.setUint32(
+      Endian.host == Endian.little ? 0 : 4,
+      payload.length,
+      Endian.host,
+    );
     framedResponse.setRange(8, framedResponse.length, payload);
     onReceive(framedResponse);
   }
@@ -69,10 +74,14 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   @override
-  void send(Uint8List bytes) {
-    sentRequests.add(
-      Request.fromJson(jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>),
+  void sendBytes(Uint8List bytes) {
+    final message = IpcMessage.fromJson(
+      jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
     );
+    sentRequests.add(message);
+    if (message is Exit) {
+      emitMessage(ExitReply(id: message.id));
+    }
   }
 
   @override
@@ -81,7 +90,13 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   @override
+  void finalizeVisualizationSharedMemorySetup() {
+    // This test connector does not own platform resources.
+  }
+
+  @override
   void dispose() {
+    completeInit(false);
     isDisposed = true;
     super.dispose();
   }
@@ -130,7 +145,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late ProjectModel project;
-  late ProjectController projectController;
+  late ProcessingGraphController processingGraphController;
   late ProjectEngineController projectEngineController;
   late ProjectRenderController projectRenderController;
   late _TestEngineConnector connector;
@@ -142,16 +157,18 @@ void main() {
     EngineConnectorBase createConnector(
       int id, {
       required bool kDebugMode,
-      void Function(Response)? onReply,
+      void Function(IpcMessage)? onMessage,
       void Function()? onExit,
+      void Function()? onConnectionClosed,
       bool noHeartbeat = false,
       String? enginePathOverride,
     }) {
       connector = _TestEngineConnector(
         kDebugMode: kDebugMode,
         noHeartbeat: noHeartbeat,
-        onReply: onReply,
+        onMessage: onMessage,
         onExit: onExit,
+        onConnectionClosed: onConnectionClosed,
       );
       return connector;
     }
@@ -164,21 +181,55 @@ void main() {
     processingGraphApi = _RecordingProcessingGraphApi();
     project.engine.processingGraphApi = processingGraphApi;
 
-    projectController = ProjectController(project, ProjectViewModel());
-    projectEngineController = ProjectEngineController(
-      project,
-      projectController,
-    );
+    final services = ServiceRegistry.initializeProject(project);
+    processingGraphController = services.processingGraphController;
+    projectEngineController = services.projectEngineController;
     projectRenderController = ProjectRenderController(
       project,
-      projectController,
+      services.processingGraphController,
     );
   });
 
-  tearDown(() {
-    projectEngineController.dispose();
-    project.dispose();
+  tearDown(() async {
+    await project.dispose();
+    ServiceRegistry.removeProject(project.id);
   });
+
+  test(
+    'the engine dispatcher responds during startup and after restart',
+    () async {
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final startup = projectEngineController.start(startAudio: false);
+        connector.completeInit();
+        await _flushMicrotasks();
+        final readyCheck = _latestRequest<EngineReadyCheckRequest>(connector)!;
+
+        // Use the same ID as the pending startup request to exercise dispatch.
+        connector.emitMessage(
+          TestUiEchoRequest(id: readyCheck.id, value: 'unhandled'),
+        );
+        await _flushMicrotasks();
+        final error = _latestRequest<RequestErrorResponse>(connector)!;
+        expect(error.id, readyCheck.id);
+        expect(error.code, RequestErrorCode.unsupported);
+        expect(error.message, 'Unsupported engine request: TestUiEchoRequest.');
+        expect(project.engine.engineState, EngineState.starting);
+
+        connector.emitMessage(
+          EngineReadyCheckResponse(id: readyCheck.id, success: true),
+        );
+        await _flushMicrotasks();
+        final modelInit = _latestRequest<ModelInitRequest>(connector)!;
+        connector.emitMessage(
+          ModelInitResponse(id: modelInit.id, success: true),
+        );
+        await startup;
+        expect(project.engine.engineState, EngineState.running);
+        connector.emitExit();
+        await project.engine.stop();
+      }
+    },
+  );
 
   test('start can start the engine process without audio', () async {
     final startFuture = projectEngineController.start(startAudio: false);
@@ -189,13 +240,13 @@ void main() {
     final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
       connector,
     )!;
-    connector.emitResponse(
+    connector.emitMessage(
       EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
     );
     await _flushMicrotasks();
 
     final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-    connector.emitResponse(
+    connector.emitMessage(
       ModelInitResponse(id: modelInitRequest.id, success: true),
     );
 
@@ -216,20 +267,20 @@ void main() {
     final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
       connector,
     )!;
-    connector.emitResponse(
+    connector.emitMessage(
       EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
     );
     await _flushMicrotasks();
 
     final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-    connector.emitResponse(
+    connector.emitMessage(
       ModelInitResponse(id: modelInitRequest.id, success: true),
     );
 
     final startAudioRequest = await _waitForRequest<StartAudioRequest>(
       connector,
     );
-    connector.emitResponse(
+    connector.emitMessage(
       StartAudioResponse(
         id: startAudioRequest.id,
         success: true,
@@ -261,20 +312,20 @@ void main() {
       final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
         connector,
       )!;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
       await _flushMicrotasks();
 
       final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
 
       final startAudioRequest = await _waitForRequest<StartAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StartAudioResponse(
           id: startAudioRequest.id,
           success: true,
@@ -293,17 +344,14 @@ void main() {
           .whereType<StartAudioRequest>()
           .length;
 
-      connector.emitResponse(
-        AudioSessionInvalidatedEvent(
-          id: -1,
-          reason: 'The audio device restarted.',
-        ),
+      connector.emitMessage(
+        AudioSessionInvalidatedEvent(reason: 'The audio device restarted.'),
       );
 
       final stopAudioRequest = await _waitForRequest<StopAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: stopAudioRequest.id, success: true),
       );
 
@@ -312,7 +360,7 @@ void main() {
             connector,
             previousStartAudioRequestCount,
           );
-      connector.emitResponse(
+      connector.emitMessage(
         StartAudioResponse(
           id: restartedStartAudioRequest.id,
           success: true,
@@ -346,20 +394,20 @@ void main() {
     final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
       connector,
     )!;
-    connector.emitResponse(
+    connector.emitMessage(
       EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
     );
     await _flushMicrotasks();
 
     final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-    connector.emitResponse(
+    connector.emitMessage(
       ModelInitResponse(id: modelInitRequest.id, success: true),
     );
 
     final startAudioRequest = await _waitForRequest<StartAudioRequest>(
       connector,
     );
-    connector.emitResponse(
+    connector.emitMessage(
       StartAudioResponse(
         id: startAudioRequest.id,
         success: false,
@@ -387,20 +435,20 @@ void main() {
       final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
         connector,
       )!;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
       await _flushMicrotasks();
 
       final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
 
       final startAudioRequest = await _waitForRequest<StartAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StartAudioResponse(
           id: startAudioRequest.id,
           success: true,
@@ -437,13 +485,13 @@ void main() {
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: firstStopAudioRequest.id, success: true),
       );
 
       final startRenderRequest =
           await _waitForRequest<StartRenderAudioSessionRequest>(connector);
-      connector.emitResponse(
+      connector.emitMessage(
         StartRenderAudioSessionResponse(
           id: startRenderRequest.id,
           success: true,
@@ -471,25 +519,19 @@ void main() {
         renderAudioRequest.sampleFormat,
         equals(RenderAudioSampleFormat.floatingPoint),
       );
-      connector.emitResponse(
+      connector.emitMessage(
         RenderAudioResponse(
           id: renderAudioRequest.id,
           success: true,
           renderId: renderTask.renderId,
         ),
       );
-      connector.emitResponse(
-        RenderStartedEvent(id: -1, renderId: renderTask.renderId),
+      connector.emitMessage(RenderStartedEvent(renderId: renderTask.renderId));
+      connector.emitMessage(
+        RenderProgressEvent(renderId: renderTask.renderId, progress: 0.5),
       );
-      connector.emitResponse(
-        RenderProgressEvent(
-          id: -1,
-          renderId: renderTask.renderId,
-          progress: 0.5,
-        ),
-      );
-      connector.emitResponse(
-        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
+      connector.emitMessage(
+        RenderCompletedEvent(renderId: renderTask.renderId),
       );
       await _flushMicrotasks();
 
@@ -509,7 +551,7 @@ void main() {
         connector,
         1,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: secondStopAudioRequest.id, success: true),
       );
       await _flushMicrotasks();
@@ -519,7 +561,7 @@ void main() {
 
       final restoredStartAudioRequest =
           await _waitForNewRequest<StartAudioRequest>(connector, 1);
-      connector.emitResponse(
+      connector.emitMessage(
         StartAudioResponse(
           id: restoredStartAudioRequest.id,
           success: true,
@@ -555,7 +597,12 @@ void main() {
       );
       expect(
         progressStatusTexts,
-        orderedEquals(['Rendering...', 'Rendering 50%...', 'Render complete.']),
+        orderedEquals([
+          'Preparing render...',
+          'Rendering...',
+          'Rendering 50%...',
+          'Render complete.',
+        ]),
       );
       await progressSubscription.cancel();
     },
@@ -572,13 +619,13 @@ void main() {
       final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
         connector,
       )!;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
       await _flushMicrotasks();
 
       final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
 
@@ -602,13 +649,13 @@ void main() {
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: firstStopAudioRequest.id, success: true),
       );
 
       final startRenderRequest =
           await _waitForRequest<StartRenderAudioSessionRequest>(connector);
-      connector.emitResponse(
+      connector.emitMessage(
         StartRenderAudioSessionResponse(
           id: startRenderRequest.id,
           success: true,
@@ -624,22 +671,22 @@ void main() {
       final renderAudioRequest = await _waitForRequest<RenderAudioRequest>(
         connector,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         RenderAudioResponse(
           id: renderAudioRequest.id,
           success: true,
           renderId: renderTask.renderId,
         ),
       );
-      connector.emitResponse(
-        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
+      connector.emitMessage(
+        RenderCompletedEvent(renderId: renderTask.renderId),
       );
 
       final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
         connector,
         1,
       );
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: secondStopAudioRequest.id, success: true),
       );
 
@@ -655,49 +702,260 @@ void main() {
     },
   );
 
-  test(
-    'render controller preserves render completion when realtime audio restore fails',
-    () async {
-      final startFuture = projectEngineController.start();
+  test('render controller preserves render completion when realtime audio restore fails', () async {
+    final startFuture = projectEngineController.start();
 
+    connector.completeInit();
+    await _flushMicrotasks();
+
+    final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
+      connector,
+    )!;
+    connector.emitMessage(
+      EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+    );
+    await _flushMicrotasks();
+
+    final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
+    connector.emitMessage(
+      ModelInitResponse(id: modelInitRequest.id, success: true),
+    );
+
+    final startAudioRequest = await _waitForRequest<StartAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      StartAudioResponse(
+        id: startAudioRequest.id,
+        success: true,
+        audioConfig: AudioProcessingConfigDto(
+          sampleRate: 48000,
+          blockSize: 256,
+          inputChannelCount: 2,
+          outputChannelCount: 2,
+        ),
+      ),
+    );
+
+    await startFuture;
+    processingGraphApi.calls.clear();
+
+    final renderTask = projectRenderController.startRender(
+      ProjectRenderRequest(
+        outputPath: r'C:\renders\test.wav',
+        format: RenderAudioFormat.wav,
+        range: const RenderTickRange(startTick: 0, endTick: 384),
+        includeTail: false,
+        sampleRate: 48000,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
+      ),
+    );
+    final renderFuture = renderTask.result;
+
+    final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      StopAudioResponse(id: firstStopAudioRequest.id, success: true),
+    );
+
+    final startRenderRequest =
+        await _waitForRequest<StartRenderAudioSessionRequest>(connector);
+    connector.emitMessage(
+      StartRenderAudioSessionResponse(
+        id: startRenderRequest.id,
+        success: true,
+        audioConfig: AudioProcessingConfigDto(
+          sampleRate: 48000,
+          blockSize: 512,
+          inputChannelCount: 0,
+          outputChannelCount: 2,
+        ),
+      ),
+    );
+
+    final renderAudioRequest = await _waitForRequest<RenderAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      RenderAudioResponse(
+        id: renderAudioRequest.id,
+        success: true,
+        renderId: renderTask.renderId,
+      ),
+    );
+    connector.emitMessage(RenderCompletedEvent(renderId: renderTask.renderId));
+
+    final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
+      connector,
+      1,
+    );
+    connector.emitMessage(
+      StopAudioResponse(id: secondStopAudioRequest.id, success: true),
+    );
+
+    final restoredStartAudioRequest =
+        await _waitForNewRequest<StartAudioRequest>(connector, 1);
+    connector.emitMessage(
+      StartAudioResponse(
+        id: restoredStartAudioRequest.id,
+        success: false,
+        error: 'No audio device after render.',
+      ),
+    );
+
+    await renderFuture;
+
+    expect(project.engine.isAudioReady, isFalse);
+    expect(
+      processingGraphApi.calls,
+      orderedEquals(['initializeForRender', 'publishForRender']),
+    );
+  });
+
+  test('render controller preserves render failure when realtime audio restore fails', () async {
+    final startFuture = projectEngineController.start();
+
+    connector.completeInit();
+    await _flushMicrotasks();
+
+    final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
+      connector,
+    )!;
+    connector.emitMessage(
+      EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+    );
+    await _flushMicrotasks();
+
+    final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
+    connector.emitMessage(
+      ModelInitResponse(id: modelInitRequest.id, success: true),
+    );
+
+    final startAudioRequest = await _waitForRequest<StartAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      StartAudioResponse(
+        id: startAudioRequest.id,
+        success: true,
+        audioConfig: AudioProcessingConfigDto(
+          sampleRate: 48000,
+          blockSize: 256,
+          inputChannelCount: 2,
+          outputChannelCount: 2,
+        ),
+      ),
+    );
+
+    await startFuture;
+    processingGraphApi.calls.clear();
+
+    final renderTask = projectRenderController.startRender(
+      ProjectRenderRequest(
+        outputPath: r'C:\renders\test.wav',
+        format: RenderAudioFormat.wav,
+        range: const RenderTickRange(startTick: 0, endTick: 384),
+        includeTail: false,
+        sampleRate: 48000,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
+      ),
+    );
+    final renderFuture = renderTask.result;
+
+    final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      StopAudioResponse(id: firstStopAudioRequest.id, success: true),
+    );
+
+    final startRenderRequest =
+        await _waitForRequest<StartRenderAudioSessionRequest>(connector);
+    connector.emitMessage(
+      StartRenderAudioSessionResponse(
+        id: startRenderRequest.id,
+        success: true,
+        audioConfig: AudioProcessingConfigDto(
+          sampleRate: 48000,
+          blockSize: 512,
+          inputChannelCount: 0,
+          outputChannelCount: 2,
+        ),
+      ),
+    );
+
+    final renderAudioRequest = await _waitForRequest<RenderAudioRequest>(
+      connector,
+    );
+    connector.emitMessage(
+      RenderAudioResponse(
+        id: renderAudioRequest.id,
+        success: true,
+        renderId: renderTask.renderId,
+      ),
+    );
+    connector.emitMessage(
+      RenderFailedEvent(renderId: renderTask.renderId, error: 'Disk full.'),
+    );
+
+    final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
+      connector,
+      1,
+    );
+    connector.emitMessage(
+      StopAudioResponse(id: secondStopAudioRequest.id, success: true),
+    );
+
+    final restoredStartAudioRequest =
+        await _waitForNewRequest<StartAudioRequest>(connector, 1);
+    connector.emitMessage(
+      StartAudioResponse(
+        id: restoredStartAudioRequest.id,
+        success: false,
+        error: 'No audio device after render.',
+      ),
+    );
+
+    await expectLater(
+      renderFuture,
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Engine render failed: Disk full.'),
+        ),
+      ),
+    );
+    expect(project.engine.isAudioReady, isFalse);
+    expect(
+      processingGraphApi.calls,
+      orderedEquals(['initializeForRender', 'publishForRender']),
+    );
+  });
+
+  test(
+    'engine shutdown ends a render and releases graph coordination',
+    () async {
+      final starting = projectEngineController.start(startAudio: false);
       connector.completeInit();
       await _flushMicrotasks();
-
-      final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
-        connector,
-      )!;
-      connector.emitResponse(
-        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+      final ready = _latestRequest<EngineReadyCheckRequest>(connector)!;
+      connector.emitMessage(
+        EngineReadyCheckResponse(id: ready.id, success: true),
       );
       await _flushMicrotasks();
+      final model = _latestRequest<ModelInitRequest>(connector)!;
+      connector.emitMessage(ModelInitResponse(id: model.id, success: true));
+      await starting;
 
-      final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-      connector.emitResponse(
-        ModelInitResponse(id: modelInitRequest.id, success: true),
-      );
-
-      final startAudioRequest = await _waitForRequest<StartAudioRequest>(
-        connector,
-      );
-      connector.emitResponse(
-        StartAudioResponse(
-          id: startAudioRequest.id,
-          success: true,
-          audioConfig: AudioProcessingConfigDto(
-            sampleRate: 48000,
-            blockSize: 256,
-            inputChannelCount: 2,
-            outputChannelCount: 2,
-          ),
-        ),
-      );
-
-      await startFuture;
-      processingGraphApi.calls.clear();
-
-      final renderTask = projectRenderController.startRender(
+      final task = projectRenderController.startRender(
         ProjectRenderRequest(
-          outputPath: r'C:\renders\test.wav',
+          outputPath: '/tmp/render.wav',
           format: RenderAudioFormat.wav,
           range: const RenderTickRange(startTick: 0, endTick: 384),
           includeTail: false,
@@ -707,20 +965,16 @@ void main() {
           sampleFormat: RenderAudioSampleFormat.floatingPoint,
         ),
       );
-      final renderFuture = renderTask.result;
-
-      final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
-        connector,
+      final failed = expectLater(task.result, throwsStateError);
+      final stoppingAudio = await _waitForRequest<StopAudioRequest>(connector);
+      connector.emitMessage(
+        StopAudioResponse(id: stoppingAudio.id, success: true),
       );
-      connector.emitResponse(
-        StopAudioResponse(id: firstStopAudioRequest.id, success: true),
-      );
-
-      final startRenderRequest =
+      final renderSession =
           await _waitForRequest<StartRenderAudioSessionRequest>(connector);
-      connector.emitResponse(
+      connector.emitMessage(
         StartRenderAudioSessionResponse(
-          id: startRenderRequest.id,
+          id: renderSession.id,
           success: true,
           audioConfig: AudioProcessingConfigDto(
             sampleRate: 48000,
@@ -730,176 +984,21 @@ void main() {
           ),
         ),
       );
-
-      final renderAudioRequest = await _waitForRequest<RenderAudioRequest>(
-        connector,
-      );
-      connector.emitResponse(
+      final rendering = await _waitForRequest<RenderAudioRequest>(connector);
+      connector.emitMessage(
         RenderAudioResponse(
-          id: renderAudioRequest.id,
+          id: rendering.id,
           success: true,
-          renderId: renderTask.renderId,
+          renderId: task.renderId,
         ),
-      );
-      connector.emitResponse(
-        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
-      );
-
-      final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
-        connector,
-        1,
-      );
-      connector.emitResponse(
-        StopAudioResponse(id: secondStopAudioRequest.id, success: true),
-      );
-
-      final restoredStartAudioRequest =
-          await _waitForNewRequest<StartAudioRequest>(connector, 1);
-      connector.emitResponse(
-        StartAudioResponse(
-          id: restoredStartAudioRequest.id,
-          success: false,
-          error: 'No audio device after render.',
-        ),
-      );
-
-      await renderFuture;
-
-      expect(project.engine.isAudioReady, isFalse);
-      expect(
-        processingGraphApi.calls,
-        orderedEquals(['initializeForRender', 'publishForRender']),
-      );
-    },
-  );
-
-  test(
-    'render controller preserves render failure when realtime audio restore fails',
-    () async {
-      final startFuture = projectEngineController.start();
-
-      connector.completeInit();
-      await _flushMicrotasks();
-
-      final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
-        connector,
-      )!;
-      connector.emitResponse(
-        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
       await _flushMicrotasks();
-
-      final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-      connector.emitResponse(
-        ModelInitResponse(id: modelInitRequest.id, success: true),
-      );
-
-      final startAudioRequest = await _waitForRequest<StartAudioRequest>(
-        connector,
-      );
-      connector.emitResponse(
-        StartAudioResponse(
-          id: startAudioRequest.id,
-          success: true,
-          audioConfig: AudioProcessingConfigDto(
-            sampleRate: 48000,
-            blockSize: 256,
-            inputChannelCount: 2,
-            outputChannelCount: 2,
-          ),
-        ),
-      );
-
-      await startFuture;
-      processingGraphApi.calls.clear();
-
-      final renderTask = projectRenderController.startRender(
-        ProjectRenderRequest(
-          outputPath: r'C:\renders\test.wav',
-          format: RenderAudioFormat.wav,
-          range: const RenderTickRange(startTick: 0, endTick: 384),
-          includeTail: false,
-          sampleRate: 48000,
-          bitDepth: 32,
-          qualityOptionIndex: 0,
-          sampleFormat: RenderAudioSampleFormat.floatingPoint,
-        ),
-      );
-      final renderFuture = renderTask.result;
-
-      final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
-        connector,
-      );
-      connector.emitResponse(
-        StopAudioResponse(id: firstStopAudioRequest.id, success: true),
-      );
-
-      final startRenderRequest =
-          await _waitForRequest<StartRenderAudioSessionRequest>(connector);
-      connector.emitResponse(
-        StartRenderAudioSessionResponse(
-          id: startRenderRequest.id,
-          success: true,
-          audioConfig: AudioProcessingConfigDto(
-            sampleRate: 48000,
-            blockSize: 512,
-            inputChannelCount: 0,
-            outputChannelCount: 2,
-          ),
-        ),
-      );
-
-      final renderAudioRequest = await _waitForRequest<RenderAudioRequest>(
-        connector,
-      );
-      connector.emitResponse(
-        RenderAudioResponse(
-          id: renderAudioRequest.id,
-          success: true,
-          renderId: renderTask.renderId,
-        ),
-      );
-      connector.emitResponse(
-        RenderFailedEvent(
-          id: -1,
-          renderId: renderTask.renderId,
-          error: 'Disk full.',
-        ),
-      );
-
-      final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
-        connector,
-        1,
-      );
-      connector.emitResponse(
-        StopAudioResponse(id: secondStopAudioRequest.id, success: true),
-      );
-
-      final restoredStartAudioRequest =
-          await _waitForNewRequest<StartAudioRequest>(connector, 1);
-      connector.emitResponse(
-        StartAudioResponse(
-          id: restoredStartAudioRequest.id,
-          success: false,
-          error: 'No audio device after render.',
-        ),
-      );
-
-      await expectLater(
-        renderFuture,
-        throwsA(
-          isA<StateError>().having(
-            (error) => error.message,
-            'message',
-            contains('Engine render failed: Disk full.'),
-          ),
-        ),
-      );
-      expect(project.engine.isAudioReady, isFalse);
-      expect(
-        processingGraphApi.calls,
-        orderedEquals(['initializeForRender', 'publishForRender']),
-      );
+      final queued = processingGraphController.publish();
+      final cancelled = expectLater(queued, throwsStateError);
+      await project.engine.stop();
+      await failed;
+      await cancelled;
+      expect(project.engine.areRequestsHeldForRender, isFalse);
     },
   );
 
@@ -912,13 +1011,13 @@ void main() {
     final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
       connector,
     )!;
-    connector.emitResponse(
+    connector.emitMessage(
       EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
     );
     await _flushMicrotasks();
 
     final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
-    connector.emitResponse(
+    connector.emitMessage(
       ModelInitResponse(id: modelInitRequest.id, success: true),
     );
 
@@ -928,7 +1027,7 @@ void main() {
     final startAudioRequest = await _waitForRequest<StartAudioRequest>(
       connector,
     );
-    connector.emitResponse(
+    connector.emitMessage(
       StartAudioResponse(
         id: startAudioRequest.id,
         success: false,
@@ -943,7 +1042,7 @@ void main() {
   });
 }
 
-T? _latestRequest<T extends Request>(_TestEngineConnector connector) {
+T? _latestRequest<T extends IpcMessage>(_TestEngineConnector connector) {
   for (final request in connector.sentRequests.reversed) {
     if (request is T) {
       return request;

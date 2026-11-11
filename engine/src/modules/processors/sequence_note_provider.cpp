@@ -23,6 +23,8 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
+#include <utility>
+
 namespace anthem {
 
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
@@ -93,12 +95,20 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state
 
 void SequenceNoteProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
   // Nothing to do here
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .eventOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = eventOutputPortId,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& outputEventBuffer =
-      context.getOutputEventBuffer(SequenceNoteProviderProcessorModelBase::eventOutputPortId);
+      context.getOutputEventBuffer(SequenceNoteProviderProcessor::eventOutputPortId);
 
   auto& trackId = this->trackId();
   auto& engineRuntimeServices = context.rt_getEngineRuntimeServices();

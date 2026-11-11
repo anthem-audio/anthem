@@ -48,7 +48,7 @@ using EntityId = int64_t;
   specific track can be surgically replaced.
 
   The goal of this file is to provide a way to:
-    1. Store compiled sequences, either patterns or arrangements
+    1. Store compiled sequences, either patterns or the arrangement
     2. Allow these compiled sequences to be replaced, either in full or in part,
        in a real-time safe way
 
@@ -232,7 +232,7 @@ public:
 // with from the sequencer's perspective. The runtime component of the sequencer
 // doesn't even know about patterns - it just sees these compiled lists.
 //
-// We store compiled track lists for each arrangement and for each pattern. When
+// We store compiled track lists for the arrangement and for each pattern. When
 // something is changed, e.g. some notes are moved around for a given pattern,
 // we don't recompile the entire sequence. Instead, we just update the compiled
 // data for the relevant track.

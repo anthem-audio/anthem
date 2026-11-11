@@ -31,6 +31,7 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+
 import 'dart:ui' as ui;
 
 /// Size of the resize handles, in pixels.

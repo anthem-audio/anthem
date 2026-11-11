@@ -27,6 +27,7 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../cli_helpers.dart';
+import '../integration_test/test_plugin_manifest.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -38,6 +39,7 @@ class EngineCommand extends Command<dynamic> {
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
+    addSubcommand(_BuildTestPluginsCommand());
     addSubcommand(_BuildLameCommand());
     addSubcommand(_CleanEngineCommand());
     addSubcommand(_FormatEngineCommand());
@@ -85,23 +87,20 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'skip-configuration',
       defaultsTo: false,
-      help:
-          'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
+      help: 'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
     );
 
     argParser.addOption(
       'jobs',
       abbr: 'j',
-      help:
-          'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
+      help: 'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
     );
 
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
         defaultsTo: false,
-        help:
-            'On Windows desktop builds, uses the Ninja generator with clang/clang++ instead of the default MSVC generator. Useful for warning checks and clang-tidy.',
+        help: 'On Windows desktop builds, uses the Ninja generator with clang/clang++ instead of the default MSVC generator. Useful for warning checks and clang-tidy.',
       );
     }
   }
@@ -165,8 +164,7 @@ to generate the files.''')..red(),
       return;
     }
 
-    print(
-      '''Note: Code generation must be run to keep the generated files up-to-date.
+    print('''Note: Code generation must be run to keep the generated files up-to-date.
 
 Some things to keep in mind:
  - The following command can be used to keep the generated files up to date:
@@ -177,8 +175,7 @@ Some things to keep in mind:
    running the above commands.
 
 
-''',
-    );
+''');
 
     final buildDirectoryName = _getBuildDirectoryName(
       wasm: wasm,
@@ -205,6 +202,12 @@ Some things to keep in mind:
       );
 
       final paths = [
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.js',
+        ),
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.wasm',
+        ),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
         packageRootPath.resolve(
@@ -214,6 +217,10 @@ Some things to keep in mind:
 
       final flutterWebDirPath = packageRootPath.resolve('web/engine/');
       final flutterWebDir = Directory.fromUri(flutterWebDirPath);
+      final browserTestDir = Directory.fromUri(
+        packageRootPath.resolve('test/.engine/'),
+      );
+      browserTestDir.createSync(recursive: true);
 
       if (!flutterWebDir.existsSync()) {
         flutterWebDir.createSync(recursive: true);
@@ -229,6 +236,11 @@ Some things to keep in mind:
         }
         File.fromUri(path).copySync(
           flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+        );
+        File.fromUri(path).copySync(
+          browserTestDir.uri
+              .resolve(fileName)
+              .toFilePath(windows: Platform.isWindows),
         );
       }
 
@@ -263,6 +275,87 @@ Some things to keep in mind:
   }
 }
 
+class _BuildTestPluginsCommand extends Command<void> {
+  @override
+  String get name => 'build-test-plugins';
+
+  @override
+  String get description =>
+      'Builds controlled VST3 fixtures for desktop integration tests.';
+
+  _BuildTestPluginsCommand() {
+    argParser
+      ..addFlag(
+        'release',
+        negatable: false,
+        help: 'Build release fixtures; otherwise use debug.',
+      )
+      ..addFlag(
+        'debug',
+        negatable: false,
+        help: 'Build debug fixtures (the default).',
+      )
+      ..addOption(
+        'jobs',
+        abbr: 'j',
+        help: 'Maximum parallel CMake build jobs.',
+      );
+    if (Platform.isWindows) {
+      argParser.addFlag(
+        'clang',
+        negatable: false,
+        help: 'Use Clang and Ninja instead of MSVC.',
+      );
+    }
+  }
+
+  @override
+  Future<void> run() async {
+    final release = argResults!['release'] as bool;
+    if (release && argResults!['debug'] == true) {
+      throw UsageException('Choose either --debug or --release.', usage);
+    }
+    final useClang = Platform.isWindows && argResults!['clang'] == true;
+    final buildDirectoryName = _getBuildDirectoryName(
+      wasm: false,
+      release: release,
+      addressSanitizer: false,
+      useClang: useClang,
+    ).replaceFirst('build', 'build_test_plugins');
+    await _buildCmakeTarget(
+      'AnthemTestPlugins',
+      debug: !release,
+      useClang: useClang,
+      buildDirectoryName: buildDirectoryName,
+      jobs: _parseJobsOption(argResults!['jobs'] as String?),
+      configurationArguments: ['-DANTHEM_BUILD_TEST_PLUGINS=ON'],
+    );
+    final root = getPackageRootPath().resolve('engine/$buildDirectoryName/');
+    final configuration = release ? 'Release' : 'Debug';
+    String pluginPath(String name) => root
+        .resolve(
+          'test_plugins/${name}_artefacts/$configuration/VST3/$name.vst3',
+        )
+        .toFilePath(windows: Platform.isWindows);
+    final manifest = TestPluginManifest(
+      platform: Platform.operatingSystem,
+      instrument: pluginPath('AnthemTestInstrument'),
+      effect: pluginPath('AnthemTestEffect'),
+      unconnectedEngine: root
+          .resolve(
+            'test_plugins/helpers/$configuration/AnthemUnconnectedTestEngine${Platform.isWindows ? '.exe' : ''}',
+          )
+          .toFilePath(windows: Platform.isWindows),
+    );
+    final file = File.fromUri(root.resolve('test-plugins.json'));
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(manifest.toJson()),
+    );
+    TestPluginManifest.read(file);
+    print('Test plugin manifest: ${file.path}');
+  }
+}
+
 class _BuildLameCommand extends Command<dynamic> {
   @override
   String get name => 'build-lame';
@@ -289,7 +382,8 @@ class _BuildLameCommand extends Command<dynamic> {
     if (!File.fromUri(lameSourcePath.resolve('configure')).existsSync()) {
       print(
         Colorize(
-          'Error: Could not find LAME source at engine/include/lame.',
+          'Error: Could not find LAME source at engine/include/lame. '
+          'Run git submodule update --init --recursive.',
         ).red(),
       );
       exit(1);
@@ -308,7 +402,6 @@ class _BuildLameCommand extends Command<dynamic> {
       Directory.fromUri(lameSourcePath),
       Directory.fromUri(sourceBuildPath),
     );
-    _normalizeLameBuildLineEndings(sourceBuildPath);
 
     if (Platform.isWindows) {
       await _buildLameOnWindows(sourceBuildPath, jobs: jobs);
@@ -317,9 +410,8 @@ class _BuildLameCommand extends Command<dynamic> {
     }
 
     final builtBinaryPath = _resolveBuiltLameBinaryLocation(sourceBuildPath);
-    File.fromUri(
-      builtBinaryPath,
-    ).copySync(outputBinaryPath.toFilePath(windows: Platform.isWindows));
+    File.fromUri(builtBinaryPath)
+        .copySync(outputBinaryPath.toFilePath(windows: Platform.isWindows));
     await _makeExecutable(outputBinaryPath);
 
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
@@ -329,9 +421,8 @@ class _BuildLameCommand extends Command<dynamic> {
     }
 
     final flutterLamePath = flutterAssetsDirPath.resolve(_lameExecutableName);
-    File.fromUri(
-      outputBinaryPath,
-    ).copySync(flutterLamePath.toFilePath(windows: Platform.isWindows));
+    File.fromUri(outputBinaryPath)
+        .copySync(flutterLamePath.toFilePath(windows: Platform.isWindows));
     await _makeExecutable(flutterLamePath);
 
     print(Colorize('\n\nLAME build complete.').lightGreen());
@@ -420,8 +511,7 @@ class _FormatEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'check',
       defaultsTo: false,
-      help:
-          'Checks whether the engine C++ files are already formatted without modifying them.',
+      help: 'Checks whether C++ files are already formatted without modifying them.',
     );
   }
 
@@ -429,7 +519,7 @@ class _FormatEngineCommand extends Command<dynamic> {
   String get name => 'format';
 
   @override
-  String get description => 'Formats Anthem-owned engine C++ files.';
+  String get description => 'Formats C++ files.';
 
   @override
   Future<void> run() async {
@@ -438,19 +528,23 @@ class _FormatEngineCommand extends Command<dynamic> {
     print(
       Colorize(
         checkOnly
-            ? 'Checking Anthem engine C++ formatting...'
-            : 'Formatting Anthem engine C++ files...',
+            ? 'Checking Anthem C++ formatting...'
+            : 'Formatting Anthem C++ files...',
       )..lightGreen(),
     );
 
     final clangFormat = _requireLlvmExecutable('clang-format');
     final packageRootPath = getPackageRootPath();
-    final files = _getOwnedEngineCppFiles();
+    final clangFormatStyle = packageRootPath
+        .resolve('engine/.clang-format')
+        .toFilePath(windows: Platform.isWindows);
+    final files = _getOwnedCppFiles(
+      includeNativeIpc: true,
+      includeTestPlugins: true,
+    );
 
     if (files.isEmpty) {
-      print(
-        Colorize('No engine C++ files found, nothing to format.')..lightGreen(),
-      );
+      print(Colorize('No C++ files found, nothing to format.')..lightGreen());
       return;
     }
 
@@ -460,6 +554,7 @@ class _FormatEngineCommand extends Command<dynamic> {
       final process = await Process.start(
         clangFormat,
         [
+          '--style=file:$clangFormatStyle',
           if (checkOnly) '--dry-run',
           if (checkOnly) '--Werror',
           if (!checkOnly) '-i',
@@ -501,8 +596,7 @@ class _LintEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'skip-configuration',
       defaultsTo: false,
-      help:
-          'Skips refreshing the CMake compile database. The lint build directory must already be configured.',
+      help: 'Skips refreshing the CMake compile database. The lint build directory must already be configured.',
     );
   }
 
@@ -552,7 +646,7 @@ class _LintEngineCommand extends Command<dynamic> {
     }
 
     final extraArgs = await _getClangTidyExtraArgs();
-    final files = _getOwnedEngineCppFiles(translationUnitsOnly: true);
+    final files = _getOwnedCppFiles(translationUnitsOnly: true);
     var hasFailures = false;
     var completedFileCount = 0;
 
@@ -599,16 +693,14 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     argParser.addOption(
       'jobs',
       abbr: 'j',
-      help:
-          'Maximum number of parallel build jobs to pass to CMake before running tests. Use 1 for single-threaded compilation.',
+      help: 'Maximum number of parallel build jobs to pass to CMake before running tests. Use 1 for single-threaded compilation.',
     );
 
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
         defaultsTo: false,
-        help:
-            'On Windows, uses the Ninja generator with clang/clang++ instead of the default MSVC generator.',
+        help: 'On Windows, uses the Ninja generator with clang/clang++ instead of the default MSVC generator.',
       );
     }
   }
@@ -723,6 +815,7 @@ Future<void> _buildCmakeTarget(
   bool skipConfiguration = false,
   String buildDirectoryName = 'build',
   int? jobs,
+  List<String> configurationArguments = const [],
 }) async {
   if (addressSanitizer && !wasm) {
     print(
@@ -757,6 +850,7 @@ Future<void> _buildCmakeTarget(
       debug: debug,
       useClang: useClang,
       buildDirectoryName: buildDirectoryName,
+      configurationArguments: configurationArguments,
     );
   }
 
@@ -825,6 +919,7 @@ Future<void> _configureCmakeBuild({
   bool debug = false,
   bool useClang = false,
   String buildDirectoryName = 'build',
+  List<String> configurationArguments = const [],
 }) async {
   final packageRootPath = getPackageRootPath();
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
@@ -883,6 +978,7 @@ Future<void> _configureCmakeBuild({
       r'-DCMAKE_C_FLAGS="/fsanitize=address"',
       r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
     ],
+    ...configurationArguments,
     '..',
   ];
 
@@ -935,7 +1031,11 @@ bool _usesSingleConfigBuild({required bool wasm, required bool useClang}) {
       (Platform.isWindows && useClang);
 }
 
-List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
+List<File> _getOwnedCppFiles({
+  bool translationUnitsOnly = false,
+  bool includeNativeIpc = false,
+  bool includeTestPlugins = false,
+}) {
   final packageRootPath = getPackageRootPath();
   final fileExtensions = translationUnitsOnly ? ['.cpp'] : ['.cpp', '.h'];
   final files = <File>[];
@@ -943,6 +1043,16 @@ List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
   final roots = [
     Directory.fromUri(packageRootPath.resolve('engine/src/')),
     Directory.fromUri(packageRootPath.resolve('engine/test/')),
+    if (includeTestPlugins)
+      Directory.fromUri(packageRootPath.resolve('engine/test_plugins/')),
+    if (includeNativeIpc)
+      Directory.fromUri(
+        packageRootPath.resolve('native/anthem_native_ipc/include/'),
+      ),
+    if (includeNativeIpc)
+      Directory.fromUri(
+        packageRootPath.resolve('native/anthem_native_ipc/src/'),
+      ),
   ];
 
   for (final root in roots) {
@@ -1056,53 +1166,18 @@ const _lameConfigureArguments = [
   '--with-fileio=lame',
 ];
 
-// Anthem uses LAME only for audio encoding, without command-line ID3 metadata
-// or interactive terminal output. Disabling these optional paths also avoids
-// portability issues in the bundled LAME version.
+// Anthem does not use LAME's interactive terminal output or iconv tag conversion.
+// LAME 4.0 calls setlocale even without iconv, but guards its locale.h include
+// with HAVE_ICONV. Include the header explicitly for this release.
 const _lameConfigureEnvironment = {
   'am_cv_func_iconv': 'no',
+  'CPPFLAGS': '-include locale.h',
   'ac_cv_lib_termcap_initscr': 'no',
   'ac_cv_lib_curses_initscr': 'no',
   'ac_cv_lib_ncurses_initscr': 'no',
 };
 
 String get _lameExecutableName => Platform.isWindows ? 'lame.exe' : 'lame';
-
-void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
-  // The LAME submodule has Windows checkout behavior, but Autotools needs LF.
-  // Normalize only the disposable build copy so the submodule stays untouched.
-  for (final entity in Directory.fromUri(
-    sourceBuildPath,
-  ).listSync(recursive: true, followLinks: false)) {
-    if (entity is! File) continue;
-    if (_fileSystemEntityName(entity) == '.git') continue;
-
-    final bytes = entity.readAsBytesSync();
-    if (bytes.contains(0)) continue;
-    if (!bytes.contains(13)) continue;
-
-    final normalizedBytes = <int>[];
-    var changed = false;
-
-    for (var i = 0; i < bytes.length; i++) {
-      final byte = bytes[i];
-      if (byte != 13) {
-        normalizedBytes.add(byte);
-        continue;
-      }
-
-      changed = true;
-      normalizedBytes.add(10);
-      if (i + 1 < bytes.length && bytes[i + 1] == 10) {
-        i++;
-      }
-    }
-
-    if (changed) {
-      entity.writeAsBytesSync(normalizedBytes);
-    }
-  }
-}
 
 Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
   final workingDirectory = sourceBuildPath.toFilePath(windows: false);
@@ -1278,10 +1353,9 @@ void _copyDirectorySync(Directory source, Directory destination) {
   destination.createSync(recursive: true);
 
   for (final entity in source.listSync(followLinks: false)) {
-    final destinationPath = _joinFileSystemPath(
-      destination.path,
-      _fileSystemEntityName(entity),
-    );
+    final name = _fileSystemEntityName(entity);
+    if (name == '.git') continue;
+    final destinationPath = _joinFileSystemPath(destination.path, name);
 
     if (entity is Directory) {
       _copyDirectorySync(entity, Directory(destinationPath));

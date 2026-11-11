@@ -104,6 +104,7 @@ class GetBestDivisionResult {
 }
 
 List<int> allPrimesUntil(int upper) {
+  if (upper < 1) throw RangeError.range(upper, 1, null, 'upper');
   // sieve[i] represents i * 2 + 3
   List<bool> sieve = List.filled(((upper - 1) / 2).floor(), true);
   for (var i = 3; i <= upper; i += 2) {

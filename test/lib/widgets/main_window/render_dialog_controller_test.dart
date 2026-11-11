@@ -23,12 +23,75 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
+import '../../../helpers/file_dialog_test_helpers.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('choosing a render destination', () {
+    late FakeFileSelector selector;
+
+    setUp(() {
+      final originalSelector = FileSelectorPlatform.instance;
+      selector = FakeFileSelector();
+      FileSelectorPlatform.instance = selector;
+      addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+    });
+
+    test('cancellation preserves the existing destination', () async {
+      final controller = _createController(filePath: r'C:\renders\mix.wav');
+
+      expect(await controller.chooseFile(), isFalse);
+      expect(controller.viewModel.filePath, r'C:\renders\mix.wav');
+    });
+
+    test(
+      'selection preserves an existing file until rendering starts',
+      () async {
+        final directory = Directory.systemTemp.createTempSync(
+          'anthem_render_selection_',
+        );
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final selectedPath = path.join(directory.path, 'mix.mp3');
+        final file = File(selectedPath)..writeAsStringSync('Existing audio');
+        selector.saveLocation = FileSaveLocation(selectedPath);
+        final controller = _createController(filePath: '');
+
+        expect(await controller.chooseFile(), isTrue);
+        expect(controller.viewModel.filePath, selectedPath);
+        expect(controller.viewModel.format, RenderAudioFormat.mp3);
+        expect(file.readAsStringSync(), 'Existing audio');
+        expect(controller.outputWillOverwrite, isTrue);
+      },
+    );
+
+    test(
+      'selection adds the current extension without creating a file',
+      () async {
+        final directory = Directory.systemTemp.createTempSync(
+          'anthem_render_selection_',
+        );
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final selectedPath = path.join(directory.path, 'mix');
+        selector.saveLocation = FileSaveLocation(selectedPath);
+        final controller = _createController(
+          filePath: '',
+          format: RenderAudioFormat.flac,
+        );
+
+        expect(await controller.chooseFile(), isTrue);
+        expect(controller.viewModel.filePath, '$selectedPath.flac');
+        expect(directory.listSync(), isEmpty);
+      },
+    );
+  });
+
   test('setFilePath adds the fallback format extension', () {
     final controller = _createController(filePath: '');
 

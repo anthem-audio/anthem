@@ -28,18 +28,24 @@ typedef RawKeyEventListener = bool Function(KeyEvent event);
 class RawKeyEventSingleton {
   static final RawKeyEventSingleton instance = RawKeyEventSingleton._internal();
 
-  RawKeyEventSingleton._internal() {
-    ServicesBinding.instance.keyboard.addHandler(_dispatchEvent);
-  }
+  RawKeyEventSingleton._internal();
 
   final Set<RawKeyEventListener> _listeners = {};
 
   void addListener(RawKeyEventListener listener) {
+    if (_listeners.isEmpty) {
+      // The binding can reset handlers between integration tests. Register for
+      // each mounted session instead of only when the singleton is created.
+      ServicesBinding.instance.keyboard.addHandler(_dispatchEvent);
+    }
     _listeners.add(listener);
   }
 
   void removeListener(RawKeyEventListener listener) {
     _listeners.remove(listener);
+    if (_listeners.isEmpty) {
+      ServicesBinding.instance.keyboard.removeHandler(_dispatchEvent);
+    }
   }
 
   bool _dispatchEvent(KeyEvent event) {

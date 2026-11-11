@@ -20,7 +20,7 @@
 part of 'messages.dart';
 
 @AnthemEnum()
-enum VisualizationValueType { doubleValue, intValue, stringValue }
+enum VisualizationValueType { doubleValue, intValue }
 
 @AnthemModel(serializable: true, generateCpp: true)
 class VisualizationSubscriptionSpec extends _VisualizationSubscriptionSpec
@@ -106,7 +106,7 @@ abstract class _VisualizationItem {
   String id;
   VisualizationValueType valueType;
 
-  @Union([List<double>, List<int>, List<String>])
+  @Union([List<double>, List<int>])
   Object values;
 
   /// Sample-domain timestamps for the values in this item.
@@ -121,19 +121,4 @@ abstract class _VisualizationItem {
     required this.values,
     required this.sampleTimestamps,
   });
-}
-
-/// An unsolicited response that gives back visualization data.
-class VisualizationUpdateEvent extends Response {
-  /// The list of visualization items that the engine is sending updates for.
-  ///
-  /// This is a list of strings that are the IDs of the visualization items. The
-  /// engine will only send updates for these items.
-  List<VisualizationItem> items;
-
-  VisualizationUpdateEvent.uninitialized() : items = [];
-
-  VisualizationUpdateEvent({required int id, required this.items}) {
-    super.id = id;
-  }
 }

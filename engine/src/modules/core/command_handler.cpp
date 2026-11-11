@@ -31,6 +31,12 @@
 #include <rfl.hpp>
 #include <rfl/json.hpp>
 #include <string>
+#include <type_traits>
+#include <utility>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 namespace anthem {
 
@@ -90,16 +96,27 @@ void CommandHandler::processNextCommand() {
   std::string commandStr(static_cast<const char*>(command.getData()), command.getSize());
   // juce::Logger::writeToLog("Received command: " + juce::String(commandStr));
 
-  auto requestWrapped = rfl::json::read<Request>(commandStr);
-
-  if (!requestWrapped.has_value()) {
+  auto message = rfl::json::read<IpcMessage>(commandStr);
+  if (!message) {
     juce::Logger::writeToLog(
-        "Failed to parse command: " + requestWrapped.error().what() + "\nCommand: " + commandStr);
+        "Failed to parse IPC message: " + message.error().what() + "\nMessage: " + commandStr);
     return;
   }
 
-  auto request = std::move(requestWrapped.value());
+  message.value().visit([this](auto& value) {
+    using Message = std::decay_t<decltype(value)>;
+    if constexpr (std::is_constructible_v<Request, Message>) {
+      handleRequest(Request{std::move(value)});
+    } else if constexpr (std::is_constructible_v<Response, Message>) {
+      Engine::getInstance().uiRequests.handleResponse(Response{std::move(value)});
+    } else {
+      // The engine has no IPC event handlers yet.
+      juce::Logger::writeToLog("Unhandled IPC event received from the UI.");
+    }
+  });
+}
 
+void CommandHandler::handleRequest(Request request) {
   bool isExit = false;
 
   std::optional<Response> response = std::nullopt;
@@ -146,8 +163,10 @@ void CommandHandler::processNextCommand() {
   else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
     auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
 
-    auto readyCheckReply = EngineReadyCheckResponse{.success = true,
-        .error = std::nullopt,
+    const auto& bootstrapResult = Engine::getInstance().getBootstrapResult();
+
+    auto readyCheckReply = EngineReadyCheckResponse{.success = bootstrapResult.succeeded(),
+        .error = bootstrapResult.error,
         .responseBase = ResponseBase{.id = requestAsReadyCheck.requestBase.get().id}};
 
     response = std::optional(std::move(readyCheckReply));
@@ -226,9 +245,20 @@ void CommandHandler::processNextCommand() {
 
     VisualizationBroker::getInstance().dispose();
 
-    Engine::getInstance().comms.closeSocketThread();
     Engine::getInstance().shutdown();
+    Engine::getInstance().comms.closeSocketThread();
+#ifdef __EMSCRIPTEN__
+    // JUCE's browser loop yields out of main, so quit cannot return through
+    // application shutdown. Destroy the engine after this handler returns, then exit
+    // the runtime to terminate its workers and notify the host.
+    juce::MessageManager::callAsync([]() {
+      juce::JUCEApplicationBase::getInstance()->shutdown();
+      juce::shutdownJuce_GUI();
+      emscripten_force_exit(0);
+    });
+#else
     juce::JUCEApplicationBase::quit();
+#endif
   }
 }
 

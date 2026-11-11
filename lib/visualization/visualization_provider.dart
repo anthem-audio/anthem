@@ -43,6 +43,7 @@ class VisualizationProvider {
   final Map<String, _CachedVisualizationValue> _latestValuesById = {};
 
   bool _enabled = true;
+  int? _recordGeneration;
 
   VisualizationProvider(this._project, {VisualizationClock? clock})
     : clock = clock ?? VisualizationClock.system,
@@ -54,21 +55,25 @@ class VisualizationProvider {
     }
 
     _engineStateChangeSub = _project.engine.engineStateStream.listen((state) {
+      final sessionEnded =
+          state == EngineState.stopping || state == EngineState.stopped;
       if (state == EngineState.running) {
         _sendUpdateIntervalToEngine();
         _scheduleSubscriptionListUpdate();
       }
 
-      if (state == EngineState.stopped) {
+      if (sessionEnded) {
         _latestValuesById.clear();
+        _recordGeneration = null;
+        _transportStats.reset();
       }
 
       // If the engine isn't running, the visualization subscriptions shouldn't
       // check for updates.
-      if (state == EngineState.stopped || state == EngineState.running) {
+      if (sessionEnded || state == EngineState.running) {
         for (var subscriptions in _subscriptions.values) {
           for (final subscription in subscriptions) {
-            if (state == EngineState.stopped) {
+            if (sessionEnded) {
               subscription._engineStopped();
             } else {
               subscription._engineStarted();
@@ -83,11 +88,10 @@ class VisualizationProvider {
       _project.engine.engineState == EngineState.running;
 
   void _sendUpdateIntervalToEngine() {
-    // For the refresh rate, we get the maximum refresh rate of all displays.
-    final refreshRate = PlatformDispatcher.instance.displays.isNotEmpty
-        ? PlatformDispatcher.instance.displays
-              .map((d) => d.refreshRate)
-              .reduce(max)
+    final reportedRate =
+        PlatformDispatcher.instance.implicitView?.display.refreshRate ?? 60.0;
+    final refreshRate = reportedRate.isFinite && reportedRate > 0
+        ? reportedRate.clamp(1.0, 240.0)
         : 60.0;
 
     _project.engine.visualizationApi.setUpdateInterval(
@@ -106,10 +110,10 @@ class VisualizationProvider {
     return Duration(microseconds: microseconds);
   }
 
-  Duration? _latestVisibleEventEngineTime(VisualizationUpdateEvent update) {
+  Duration? _latestVisibleSampleEngineTime(VisualizationRecord record) {
     int? latestSampleTimestamp;
 
-    for (final item in update.items) {
+    for (final item in record.items) {
       for (final sampleTimestamp in item.sampleTimestamps) {
         if (latestSampleTimestamp == null ||
             sampleTimestamp > latestSampleTimestamp) {
@@ -125,16 +129,33 @@ class VisualizationProvider {
     return _sampleTimestampToEngineTime(latestSampleTimestamp);
   }
 
-  void processVisualizationUpdate(VisualizationUpdateEvent update) {
+  /// Updates subscriptions from a decoded visualization record.
+  ///
+  /// Records with a different sample rate or an older generation are ignored.
+  /// Discontinuities reset buffering before new samples are applied.
+  void processVisualizationRecord(VisualizationRecord record) {
     final audioConfig = _project.engine.audioConfig;
-    if (audioConfig == null || audioConfig.sampleRate <= 0) {
-      _transportStats.recordArrival(null);
+    if (audioConfig == null ||
+        audioConfig.sampleRate <= 0 ||
+        audioConfig.sampleRate != record.sampleRate ||
+        (_recordGeneration != null && record.generation < _recordGeneration!)) {
       return;
     }
+    if (record.discontinuity ||
+        (_recordGeneration != null && _recordGeneration != record.generation)) {
+      if (_recordGeneration != record.generation) _latestValuesById.clear();
+      _transportStats.reset();
+      for (final group in _subscriptions.values) {
+        for (final subscription in group) {
+          subscription._transportDiscontinuity();
+        }
+      }
+    }
+    _recordGeneration = record.generation;
 
-    _transportStats.recordArrival(_latestVisibleEventEngineTime(update));
+    _transportStats.recordArrival(_latestVisibleSampleEngineTime(record));
 
-    for (final item in update.items) {
+    for (final item in record.items) {
       final values = item.values as List;
       final sampleTimestamps = item.sampleTimestamps;
 
@@ -192,12 +213,10 @@ class VisualizationProvider {
     final subscription = switch (config.type) {
       VisualizationSubscriptionType.latest =>
         _LatestVisualizationSubscription<T>(config, this),
-      VisualizationSubscriptionType.max =>
-        _MaxVisualizationSubscription(
-              config as VisualizationSubscriptionConfig<double>,
-              this,
-            )
-            as VisualizationSubscription<T>,
+      VisualizationSubscriptionType.max => _MaxVisualizationSubscription(
+        config as VisualizationSubscriptionConfig<double>,
+        this,
+      ) as VisualizationSubscription<T>,
     };
 
     if (existingSubscriptions == null) {

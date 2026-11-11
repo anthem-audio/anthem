@@ -22,7 +22,7 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/render/render_range.dart';
 import 'package:anthem/model/project.dart';
 import 'package:logging/logging.dart';
@@ -78,11 +78,11 @@ class ProjectRenderTask {
 
 class ProjectRenderController {
   final ProjectModel project;
-  final ProjectController projectController;
+  final ProcessingGraphController processingGraphController;
 
   Future<void>? _activeRenderFuture;
 
-  ProjectRenderController(this.project, this.projectController);
+  ProjectRenderController(this.project, this.processingGraphController);
 
   ProjectRenderTask startRender(ProjectRenderRequest request) {
     if (_activeRenderFuture != null) {
@@ -94,12 +94,16 @@ class ProjectRenderController {
         StreamController<ProjectRenderProgress>.broadcast();
 
     late final Future<void> resultFuture;
-    resultFuture =
-        _runRender(
-          renderId: renderId,
-          request: request,
-          progressController: progressController,
-        ).whenComplete(() async {
+    resultFuture = processingGraphController
+        .runRender(
+          (publishGraph) => _runRender(
+            renderId: renderId,
+            request: request,
+            progressController: progressController,
+            publishGraph: publishGraph,
+          ),
+        )
+        .whenComplete(() async {
           if (identical(_activeRenderFuture, resultFuture)) {
             _activeRenderFuture = null;
           }
@@ -120,11 +124,13 @@ class ProjectRenderController {
     required int renderId,
     required ProjectRenderRequest request,
     required StreamController<ProjectRenderProgress> progressController,
+    required Future<void> Function() publishGraph,
   }) async {
     if (project.engine.engineState != EngineState.running) {
       throw StateError('Engine must be running to render audio.');
     }
 
+    final engineSession = project.engine.sessionEnded;
     final shouldRestoreRealtimeAudio = project.engine.isAudioReady;
     final realtimeAudioConfig = project.engine.audioConfig;
     final blockSize = realtimeAudioConfig?.blockSize ?? _defaultRenderBlockSize;
@@ -133,8 +139,8 @@ class ProjectRenderController {
         _defaultRenderOutputChannelCount;
     project.engine.holdRequestsForRender();
 
-    StreamSubscription<Response>? renderEventSubscription;
-    final renderCompletion = Completer<Response>();
+    StreamSubscription<IpcEvent>? renderEventSubscription;
+    final renderCompletion = Completer<IpcEvent>();
 
     void emitProgress(ProjectRenderProgress progress) {
       if (!progressController.isClosed) {
@@ -167,7 +173,7 @@ class ProjectRenderController {
         blockSize: blockSize,
         outputChannelCount: outputChannelCount,
       );
-      await projectController.publishProcessingGraphForRender();
+      await publishGraph();
 
       final startResult = await project.engine.renderApi.renderAudio(
         renderId: renderId,
@@ -187,7 +193,12 @@ class ProjectRenderController {
         );
       }
 
-      final completionEvent = await renderCompletion.future;
+      final completionEvent = await Future.any([
+        renderCompletion.future,
+        engineSession.then<IpcEvent>((_) {
+          throw StateError('The engine session ended during rendering.');
+        }),
+      ]);
       switch (completionEvent) {
         case RenderCompletedEvent _:
           return;
@@ -214,7 +225,7 @@ class ProjectRenderController {
       if (shouldRestoreRealtimeAudio) {
         try {
           await project.engine.startAudioForRender();
-          await projectController.publishProcessingGraphForRender();
+          await publishGraph();
         } catch (error, stackTrace) {
           _log.warning(
             'Could not restore realtime audio for project ${project.id} after render.',
@@ -229,9 +240,9 @@ class ProjectRenderController {
   }
 
   void _handleRenderEvent({
-    required Response event,
+    required IpcEvent event,
     required int renderId,
-    required Completer<Response> renderCompletion,
+    required Completer<IpcEvent> renderCompletion,
     required void Function(ProjectRenderProgress progress) emitProgress,
   }) {
     switch (event) {

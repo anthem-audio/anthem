@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,8 +32,12 @@ public:
   "sequence": {
     "ticksPerQuarter": 96,
     "beatsPerMinuteRaw": 12800,
-    "arrangements": {},
-    "arrangementOrder": [],
+    "arrangement": {
+      "id": 1,
+      "name": "Arrangement 1",
+      "clips": {},
+      "timeSignatureChanges": []
+    },
     "tracks": {},
     "trackOrder": [],
     "defaultTimeSignature": {

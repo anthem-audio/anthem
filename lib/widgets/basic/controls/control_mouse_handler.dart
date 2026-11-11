@@ -17,14 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/window_utils.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
+
+import 'control_mouse_handler_pointer_lock_native.dart'
+    if (dart.library.js_interop) 'control_mouse_handler_pointer_lock_web.dart';
 
 const _doubleClickThreshold = Duration(milliseconds: 500);
 const _maxDoubleClickDistance = 8.0;
@@ -80,20 +81,8 @@ class ControlMouseHandler extends StatefulWidget {
 }
 
 class _ControlMouseHandlerState extends State<ControlMouseHandler> {
-  Rect windowRect = Rect.zero;
-
-  double devicePixelRatio = -1;
-
-  double originalMouseX = -1;
-  double originalMouseY = -1;
-
-  double mostRecentMouseX = -1;
-  double mostRecentMouseY = -1;
-
   double accumulatorX = 0;
   double accumulatorY = 0;
-
-  MouseCursorManager manager = MouseCursorManager(SystemMouseCursors.basic);
 
   PointerDeviceKind? pointerDeviceKind;
 
@@ -179,7 +168,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     _clearActiveClick();
   }
 
-  void onPointerDown(PointerEvent e) async {
+  void onPointerDown(PointerEvent e) {
     pointerDeviceKind = e.kind;
 
     widget.onStart?.call();
@@ -192,31 +181,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         ]);
       }
     }
-
-    final mediaQuery = MediaQuery.of(context);
-    devicePixelRatio = mediaQuery.devicePixelRatio;
-
-    final windowPos = await getWindowPosition();
-    final windowSize = await getWindowSize();
-    if (!mounted) {
-      return;
-    }
-
-    windowRect = Rect.fromLTWH(
-      windowPos.dx / devicePixelRatio,
-      windowPos.dy / devicePixelRatio,
-      windowSize.width / devicePixelRatio,
-      windowSize.height / devicePixelRatio,
-    );
-
-    final mousePos = Offset(
-      e.position.dx + windowRect.left,
-      e.position.dy + windowRect.top,
-    );
-    originalMouseX = mousePos.dx;
-    originalMouseY = mousePos.dy;
-    mostRecentMouseX = mousePos.dx;
-    mostRecentMouseY = mousePos.dy;
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
@@ -242,7 +206,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     }
   }
 
-  void onPointerUp(PointerEvent e) {
+  void onPointerUp(PointerEvent e, {bool canceled = false}) {
     if (pointerDeviceKind == null) {
       _recordActiveClick();
       return;
@@ -251,13 +215,18 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     widget.onEnd?.call(
       ControlMouseEvent(
         delta: const Offset(0, 0),
-        absolute: Offset(accumulatorX, accumulatorY),
+        absolute: Offset(accumulatorX, -accumulatorY),
         kind: pointerDeviceKind!,
         isScroll: false,
       ),
     );
 
-    _recordActiveClick();
+    if (canceled) {
+      _clearPendingClick();
+      _clearActiveClick();
+    } else {
+      _recordActiveClick();
+    }
 
     accumulatorX = 0;
     accumulatorY = 0;
@@ -296,6 +265,13 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   @override
+  void dispose() {
+    if (baseHintId != null) HintStore.instance.removeHint(baseHintId!);
+    if (changeHintId != null) HintStore.instance.removeHint(changeHintId!);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final listener = Listener(
       behavior: HitTestBehavior.translucent,
@@ -304,6 +280,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     );
 
     final lock = PointerLockDragArea(
+      usePointerLock: shouldUsePointerLock,
       windowsMode: PointerLockWindowsMode.capture,
       accept: _acceptPointerLock,
       onLock: (e) {
@@ -313,7 +290,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         onPointerMove(e.move);
       },
       onUnlock: (e) {
-        onPointerUp(e.trigger);
+        onPointerUp(e.trigger, canceled: e.canceled);
         if (mounted) {
           setState(() {});
         }

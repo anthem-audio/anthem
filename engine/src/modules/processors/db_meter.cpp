@@ -24,6 +24,7 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace anthem {
 
@@ -81,7 +82,16 @@ void DbMeterProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
   rt_publishEverySamples->store(
       std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
 
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioInputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
@@ -89,7 +99,7 @@ void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
     return;
   }
 
-  auto audioInBuffer = context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(DbMeterProcessor::audioInputPortId);
   const int64_t publishEverySamples =
       std::max<int64_t>(1, rt_publishEverySamples->load(std::memory_order_relaxed));
   const int64_t blockStartSample = Engine::getInstance().transport->rt_sampleCounter;

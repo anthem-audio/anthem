@@ -27,9 +27,9 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
-import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -162,10 +162,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID];
-
-    if (arrangement == null) return const SizedBox();
+    final arrangement = project.sequence.arrangement;
 
     final devicePixelRatio = View.of(context).devicePixelRatio;
     viewModel.ensureRenderCachesForDevicePixelRatio(devicePixelRatio);
@@ -207,12 +204,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
   double get timeViewEnd => timeRangeAnimation.renderedEnd;
   double get renderedVerticalScrollPosition =>
       verticalScrollPositionAnimation.value;
-  double get _verticalScrollDelta =>
-      viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
-  double _getTrackPosition(num trackIndex) {
-    return viewModel.trackPositionCalculator.getTrackPosition(trackIndex) +
-        _verticalScrollDelta;
+  double _rowTopInViewport(int rowIndex) {
+    return viewModel.trackLayout.rowLayoutAt(rowIndex).contentSpan.top -
+        renderedVerticalScrollPosition;
   }
 
   @override
@@ -283,12 +278,19 @@ class ArrangerContentPainter extends CustomPainterObserver {
       final trackIndex = _rowIdToIndex(rowId);
       if (trackIndex == null) return;
 
-      final trackPos = _getTrackPosition(trackIndex);
-      final trackHeight =
-          viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
-      final contentTop = trackPos;
+      final trackPos = _rowTopInViewport(trackIndex);
+      final trackHeight = viewModel.trackLayout
+          .rowLayoutAt(trackIndex)
+          .contentSpan
+          .height;
+      final clipBounds = clipPaintVerticalBoundsForRow(
+        rowTop: trackPos,
+        rowHeight: trackHeight,
+      );
+      final clipTop = clipBounds.top;
+      final clipHeight = clipBounds.bottom - clipBounds.top;
 
-      final rect = Rect.fromLTWH(left, contentTop, width, trackHeight);
+      final rect = Rect.fromLTWH(left, clipTop, width, clipHeight);
 
       canvas.drawRect(rect, Paint()..color = color);
 
@@ -322,9 +324,11 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final trackIndex = _rowIdToIndex(rowId);
     if (trackIndex == null) return;
 
-    final trackPos = _getTrackPosition(trackIndex);
-    final trackHeight =
-        viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+    final trackPos = _rowTopInViewport(trackIndex);
+    final trackHeight = viewModel.trackLayout
+        .rowLayoutAt(trackIndex)
+        .contentSpan
+        .height;
     final contentTop = trackPos;
 
     final rect = Rect.fromLTWH(
@@ -343,7 +347,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
   }
 
   int? _rowIdToIndex(Id rowId) {
-    return viewModel.trackPositionCalculator.tryRowIdToIndex(rowId);
+    return viewModel.trackLayout.tryRowIdToIndex(rowId);
   }
 
   ClipRenderInfo? _buildClipRenderInfo({
@@ -380,20 +384,21 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     if (x > size.width || x + width < 0) return null;
 
-    final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
-      trackId,
-    );
+    final trackIndex = viewModel.trackLayout.tryTrackIdToIndex(trackId);
     if (trackIndex == null) return null;
 
-    final y = _getTrackPosition(trackIndex) - 1;
-    final trackHeight =
-        calculateTrackHeight(
-          viewModel.baseTrackHeight,
-          viewModel.rowHeightModifier(trackId),
-        ) +
-        1;
+    final rowLayout = viewModel.trackLayout.rowLayoutAt(trackIndex);
+    final contentTop =
+        rowLayout.contentSpan.top - renderedVerticalScrollPosition;
+    final contentHeight = rowLayout.contentSpan.height;
+    final clipBounds = clipPaintVerticalBoundsForRow(
+      rowTop: contentTop,
+      rowHeight: contentHeight,
+    );
+    final y = clipBounds.top;
+    final clipHeight = clipBounds.bottom - clipBounds.top;
 
-    if (y > size.height || y + trackHeight < 0) return null;
+    if (y > size.height || y + clipHeight < 0) return null;
 
     final track = project.tracks[trackId];
     if (track == null) return null;
@@ -410,7 +415,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       x: x,
       y: y,
       width: width,
-      height: trackHeight,
+      height: clipHeight,
       selected: viewModel.selectedClips.contains(clipId),
       hovered: viewModel.hoveredClip == clipId,
       showAutomationHandles: viewModel.clipWithAutomationHandles == clipId,
@@ -503,10 +508,18 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final x = clipEntry.x;
         final y = clipEntry.y;
         final width = clipEntry.width;
-        final trackHeight = clipEntry.height;
+        final clipPaintHeight = clipEntry.height;
+        final interactionY = y + clipVerticalPaintOvershoot;
+        final interactionHeight =
+            clipPaintHeight - clipVerticalPaintOvershoot * 2;
 
         viewModel.visibleClips.add(
-          rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
+          rect: Rect.fromLTWH(
+            x,
+            interactionY,
+            width - 1,
+            interactionHeight - 1,
+          ),
           metadata: clipEntry.clipId,
         );
 
@@ -515,9 +528,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
           end: endResizeHandleRect,
         ) = computeResizeHandleRects(
           clipX: x,
-          clipY: y,
+          clipY: interactionY,
           clipWidth: width,
-          clipHeight: trackHeight,
+          clipHeight: interactionHeight,
         );
         viewModel.visibleResizeAreas.add(
           rect: startResizeHandleRect,

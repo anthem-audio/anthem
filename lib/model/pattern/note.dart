@@ -79,9 +79,8 @@ int compareResolvedPatternNotesForRendering(
   ResolvedPatternNote a,
   ResolvedPatternNote b,
 ) {
-  final layerCompare = _resolvedPatternNoteRenderLayer(
-    a,
-  ).compareTo(_resolvedPatternNoteRenderLayer(b));
+  final layerCompare = _resolvedPatternNoteRenderLayer(a)
+      .compareTo(_resolvedPatternNoteRenderLayer(b));
   if (layerCompare != 0) return layerCompare;
 
   final offsetCompare = a.offset.compareTo(b.offset);

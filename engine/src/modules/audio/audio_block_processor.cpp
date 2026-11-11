@@ -24,7 +24,7 @@
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 
-#include <chrono>
+#include <juce_core/juce_core.h>
 
 namespace anthem {
 
@@ -39,7 +39,9 @@ AudioBlockProcessor::AudioBlockProcessor(Transport& transport,
 
 AudioBlockProcessResult AudioBlockProcessor::processAudioBlock(
     int numSamples, double sampleRate, uint64_t audioProcessingConfigGeneration) {
-  auto startTime = std::chrono::high_resolution_clock::now();
+  // Unlike std::chrono's monotonic clock, JUCE's platform clock also works in
+  // AudioWorklets, where performance.now() is unavailable.
+  const auto startTime = juce::Time::getHighResolutionTicks();
 
   numSamples = transport.rt_beginProcessingBlock(numSamples);
   const auto blockStartSample = transport.rt_sampleCounter;
@@ -59,11 +61,11 @@ AudioBlockProcessResult AudioBlockProcessor::processAudioBlock(
   const auto didProcessGraph =
       graphProcessor.rt_process(numSamples, audioProcessingConfigGeneration);
 
-  auto endTime = std::chrono::high_resolution_clock::now();
-
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-  auto durationInSeconds = static_cast<double>(duration) / 1e6;
+  const auto endTime = juce::Time::getHighResolutionTicks();
+  // The worklet clock may fall back to wall time. Avoid negative CPU burden
+  // if the system clock is adjusted backwards.
+  const auto duration = juce::jmax<juce::int64>(0, endTime - startTime);
+  const auto durationInSeconds = juce::Time::highResolutionTicksToSeconds(duration);
   jassert(sampleRate >= 0.0);
   auto cpuBurden = durationInSeconds * sampleRate /
                    static_cast<double>(numSamples); // actual time / total buffer time

@@ -48,13 +48,10 @@ AudioCallback::AudioCallback(Project& project,
   }
 
   auto masterOutputNodeSharedPtr = masterOutputNodeIter->second;
-  auto masterOutputProcessorOpt = masterOutputNodeSharedPtr->getProcessor();
-  if (!masterOutputProcessorOpt.has_value()) {
-    throw std::runtime_error("master output node does not have a processor");
-  }
+  auto masterOutputModelProcessor = masterOutputNodeSharedPtr->getProcessor();
 
   masterOutputProcessorSharedPtr =
-      std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
+      std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputModelProcessor);
   if (masterOutputProcessorSharedPtr == nullptr) {
     throw std::runtime_error("master output processor is not a MasterOutputProcessor");
   }

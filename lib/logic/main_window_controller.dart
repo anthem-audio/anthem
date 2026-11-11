@@ -18,15 +18,24 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem/logic/project_file/archive.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
+import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/storage/asset_file_io.dart' as asset_files;
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -34,8 +43,62 @@ import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as paths;
 
 final _log = Logger('main_window_controller');
+const _projectFileType = XTypeGroup(
+  label: 'Anthem projects',
+  extensions: ['anthem', 'zip'],
+);
+const _projectZipType = XTypeGroup(label: 'ZIP archives', extensions: ['zip']);
+
+@visibleForTesting
+String projectFileLoadErrorMarkdown(Object error) {
+  String version(ProjectFileVersion version) {
+    return escapeDialogMarkdown(version.toString());
+  }
+
+  return switch (error) {
+    ProjectFileMigrationException(
+      cause: ProjectDirectoryRequiresDesktopException error,
+    ) =>
+      projectFileLoadErrorMarkdown(error),
+    ProjectDirectoryRequiresDesktopException() =>
+      'Export this project as a ZIP in the desktop version of Anthem, '
+          'then open the ZIP here. A project document alone does not '
+          'include its associated files.',
+    ProjectSavedInNewerVersionException error =>
+      'This project was saved in a newer version of Anthem '
+          '(${version(error.savedVersion)}). You are running Anthem '
+          '${version(error.currentVersion)}.\n\n'
+          'Update Anthem to that version or newer to open this project.',
+    ProjectVersionTooOldException error =>
+      'This project was saved in Anthem ${version(error.savedVersion)}, which '
+          'is older than the oldest project version supported by this version '
+          'of Anthem (${version(error.oldestSupportedVersion)}).',
+    ProjectFileMigrationException(
+      cause: MultipleArrangementsProjectFileException error,
+    ) =>
+      'This project contains ${error.arrangementCount} arrangements. This '
+          'version of Anthem can only open projects containing one '
+          'arrangement. The original project file was not changed.',
+    ProjectFileMigrationException error =>
+      'Anthem could not update this project from version '
+          '${version(error.fromVersion)} to ${version(error.targetVersion)}. '
+          'The original project file was not changed.\n\n'
+          'Please report this problem and include your Anthem logs.',
+    ProjectFileReadException() =>
+      'Anthem could not read the selected project file. Check that the file '
+          'still exists and that you have permission to open it.',
+    InvalidProjectFileException() =>
+      'Anthem could not read this project. The file may be damaged or may not '
+          'be an Anthem project file. The original file was not changed.',
+    _ =>
+      'Anthem encountered an unexpected error while opening this project. '
+          'The original project file was not changed.\n\n'
+          'See the Anthem logs for more information.',
+  };
+}
 
 class CursorOverrideHandle {
   final MainWindowController _controller;
@@ -56,24 +119,47 @@ class CursorOverrideHandle {
 }
 
 class MainWindowController {
+  final Map<ProjectId, Future<void>> _projectCloseFutures = {};
   final Map<int, MouseCursor> _cursorOverrides = {};
   int _nextCursorOverrideId = 0;
 
-  ServiceRegistry _addProject(ProjectModel project) {
+  /// Registers [project] and makes it active without starting its engine.
+  ServiceRegistry registerProject(
+    ProjectModel project, {
+    ProjectStorage? storage,
+  }) {
     final store = AnthemStore.instance;
 
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
-    return ServiceRegistry.initializeProject(project);
+    final registry = ServiceRegistry.initializeProject(project);
+    if (storage != null) {
+      registry.register(storage);
+      final documentPath = project.filePath;
+      if (documentPath != null && !storage.isTemporary) {
+        registry.savedProjectFiles.record(
+          documentPath,
+          storage.projectFiles.references.values,
+        );
+      }
+    }
+    return registry;
   }
 
   // Returns the ID of the new tab
   Future<ProjectId> newProject() async {
-    ProjectModel project = ProjectModel.create();
+    return openProject(ProjectModel.create());
+  }
 
-    final serviceRegistry = _addProject(project);
-    await serviceRegistry.projectEngineController.start();
+  /// Registers [project] and starts its engine.
+  Future<ProjectId> openProject(
+    ProjectModel project, {
+    bool startAudio = true,
+    ProjectStorage? storage,
+  }) async {
+    final serviceRegistry = registerProject(project, storage: storage);
+    await serviceRegistry.projectEngineController.start(startAudio: startAudio);
 
     return project.id;
   }
@@ -87,7 +173,17 @@ class MainWindowController {
     }
   }
 
-  void closeProjectWithoutSaving(ProjectId projectId) {
+  /// Stops the engine before releasing project services and temporary files.
+  Future<void> closeProjectWithoutSaving(ProjectId projectId) {
+    return _projectCloseFutures.putIfAbsent(
+      projectId,
+      () => _closeProjectWithoutSaving(projectId).whenComplete(() {
+        _projectCloseFutures.remove(projectId);
+      }),
+    );
+  }
+
+  Future<void> _closeProjectWithoutSaving(ProjectId projectId) async {
     final store = AnthemStore.instance;
     final project = store.projects[projectId];
 
@@ -95,72 +191,131 @@ class MainWindowController {
       return;
     }
 
+    await project.dispose();
+    final storage = ServiceRegistry.maybeForProject(projectId)
+        ?.get<ProjectStorage>();
+    if (storage != null) {
+      if (storage.isTemporary) {
+        await storage.discard();
+      } else {
+        await storage.close();
+      }
+    }
     ServiceRegistry.removeProject(projectId);
-
-    // Clean up project resources
-    project.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);
     store.projectOrder.remove(projectId);
 
     // If the active project was closed, set it to the first open project
-    if (store.activeProjectId == projectId && store.projectOrder.isNotEmpty) {
-      store.activeProjectId = store.projectOrder[0];
+    if (store.activeProjectId == projectId) {
+      store.activeProjectId = store.projectOrder.firstOrNull ?? '';
     }
   }
 
   /// Returns the ID of the loaded project, or null if the project load failed
-  /// or was cancelled.
-  Future<ProjectId?> loadProject() async {
-    String? home;
-    Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
-
-    // This throws on web due to dart:io usage
-    try {
-      if (Platform.isMacOS || Platform.isLinux) {
-        home = envVars['HOME'];
-      } else if (Platform.isWindows) {
-        home = envVars['UserProfile'];
-      }
-    } catch (e) {
-      home = null;
-    }
-
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['anthem'],
-      initialDirectory: home,
+  /// or was cancelled. Decoding, migration, and restoring file claims finish
+  /// before the engine starts. ZIPs open as unsaved copies in temporary storage.
+  Future<ProjectId?> loadProject({
+    required DialogController dialogController,
+    String? engineExecutable,
+    bool startAudio = true,
+  }) async {
+    final file = await openFile(
+      acceptedTypeGroups: [_projectFileType],
+      initialDirectory:
+          await ServiceRegistry.applicationSettings.projectsDirectory,
     );
+    if (file == null) return null;
 
     final ProjectModel project;
-    String? path;
+    ProjectStorage? storage;
+    final isArchive = paths.extension(file.name).toLowerCase() == '.zip';
+    final bool opensAsCopy;
+    final bool isLegacy;
 
     try {
-      final Map<String, dynamic> projectJson;
-      if (kIsWeb) {
-        final bytes = result?.files.firstOrNull?.bytes;
-        if (bytes == null) return null;
-        projectJson = await decodeProjectFileBytes(bytes);
-      } else {
-        path = result?.files.firstOrNull?.path;
-        if (path == null) return null;
-        projectJson = await readProjectFile(path);
+      var documentPath = file.path;
+      if (isArchive) {
+        final extracted = await extractProjectArchive(file);
+        storage = ProjectStorage.temporary(
+          rootDirectory: extracted.rootDirectory,
+        );
+        documentPath = extracted.documentPath;
       }
-
-      project = ProjectModel.fromJson(projectJson);
+      final projectJson = kIsWeb
+          ? await decodeProjectFileBytes(
+              isArchive
+                  ? await asset_files.readFile(documentPath)
+                  : await file.readAsBytes(),
+            )
+          : await readProjectFile(documentPath);
+      final savedVersion = readSavedProjectVersion(projectJson);
+      // Projects used a single file before prealpha.2.
+      isLegacy = savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
+      opensAsCopy = kIsWeb || isArchive || isLegacy;
+      storage ??= opensAsCopy
+          ? ProjectStorage.temporary()
+          : ProjectStorage(rootDirectory: paths.dirname(file.path));
+      await migrateProjectJson(
+        projectJson,
+        projectDirectory: storage.rootDirectory,
+      );
+      // An archive opens as an unsaved copy, including alongside its source.
+      if (isArchive) projectJson['id'] = getProjectId();
+      final loaded = ProjectModel.fromJson(
+        projectJson,
+        enginePathOverride: engineExecutable,
+      );
+      try {
+        final references = Map<String, String>.from(
+          jsonDecode(loaded.fileRetentions) as Map,
+        );
+        if (kIsWeb && !isArchive && !isLegacy && references.isNotEmpty) {
+          throw const ProjectDirectoryRequiresDesktopException();
+        }
+        await storage.restoreProjectFiles(references);
+      } catch (_) {
+        await loaded.dispose();
+        rethrow;
+      }
+      project = loaded;
     } catch (error, stackTrace) {
+      if (storage != null) {
+        if (storage.isTemporary) {
+          await storage.discard();
+        } else {
+          await storage.close();
+        }
+      }
       _log.warning('Could not load project file.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Could not open project',
+        markdown: projectFileLoadErrorMarkdown(error),
+        buttons: [DialogButton.ok()],
+      );
       return null;
     }
 
-    final serviceRegistry = _addProject(project);
+    project.filePath = opensAsCopy ? null : file.path;
+    project.isDirty = opensAsCopy;
 
-    project.filePath = path;
-    project.isDirty = false;
-
-    await serviceRegistry.projectEngineController.start();
-    return project.id;
+    final id = await openProject(
+      project,
+      startAudio: startAudio,
+      storage: storage,
+    );
+    if (isLegacy && !isArchive && !kIsWeb) {
+      dialogController.showMarkdownDialog(
+        title: 'Save this project as a folder',
+        markdown:
+            'This project uses the older single-file format. '
+            'It has been opened as an unsaved project and needs to be saved '
+            'to a new project folder. The original file will be kept.',
+        buttons: [DialogButton.ok()],
+      );
+    }
+    return id;
   }
 
   Future<bool> saveProject(
@@ -169,102 +324,193 @@ class MainWindowController {
     required DialogController dialogController,
   }) async {
     final project = AnthemStore.instance.projects[projectId]!;
+    await project.waitForPendingCommands();
+    if (kIsWeb) {
+      return _downloadProjectZip(project, dialogController, markSaved: true);
+    }
 
     String? path;
-
-    if (!kIsWeb) {
-      if (alwaysUseFilePicker || project.filePath == null) {
-        path = (await FilePicker.saveFile(
-          type: FileType.custom,
-          allowedExtensions: ['anthem'],
-        ));
-      } else {
-        path = project.filePath;
+    var createDirectory = false;
+    if (alwaysUseFilePicker || project.filePath == null) {
+      final initialDirectory = await _projectSaveDirectory(project);
+      final folder = (await getSaveLocation(
+        initialDirectory: initialDirectory,
+        suggestedName: project.name,
+        confirmButtonText: 'Create project folder',
+      ))?.path;
+      if (folder != null) {
+        final root = paths.normalize(paths.absolute(folder));
+        path = paths.join(root, '${paths.basename(root)}.anthem');
+        createDirectory =
+            project.filePath == null ||
+            !paths.equals(root, paths.dirname(project.filePath!));
+        if (!createDirectory) path = project.filePath;
       }
-    }
-
-    if (!kIsWeb && path == null) return false;
-
-    if (path != null && !path.endsWith('.anthem')) {
-      path += '.anthem';
-    }
-
-    if (kIsWeb) {
-      // Dialog to ask for filename
-
-      final controller = TextEditingController();
-      final completer = Completer<String?>();
-
-      dialogController.showDialog(
-        content: SizedBox(
-          width: 300,
-          height: 70,
-          child: Column(
-            spacing: 12,
-            children: [
-              Text(
-                'Enter a file name for the project:',
-                style: TextStyle(fontSize: 13, color: AnthemTheme.text.main),
-              ),
-              SizedBox(
-                width: 161,
-                child: Center(
-                  child: TextBox(height: 26, controller: controller),
-                ),
-              ),
-            ],
-          ),
-        ),
-        title: 'Save',
-        buttons: [
-          DialogButton.cancel(),
-          DialogButton(
-            text: 'Download',
-            onPress: () {
-              completer.complete(controller.text);
-            },
-          ),
-        ],
-        onDismiss: () {
-          completer.complete(null);
-        },
-      );
-
-      final fileName = await completer.future;
-      if (fileName == null) return false;
-
-      try {
-        final bytes = await encodeProjectFile(project);
-        await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
-      } catch (error, stackTrace) {
-        _log.warning('Could not save project file.', error, stackTrace);
-
-        dialogController.showMarkdownDialog(
-          title: 'Save',
-          markdown:
-              'Could not save project:\n\n'
-              '${escapeDialogMarkdown(error.toString())}',
-          buttons: [DialogButton.ok()],
-        );
-
-        return false;
-      }
-
-      project.isDirty = false;
-      return true;
     } else {
-      // Load the latest for all plugin states before saving
-      await Future.wait(
-        project.processingGraph.nodes.values.map((node) {
-          return node.updateStateFromEngine();
-        }),
+      path = project.filePath;
+    }
+    if (path == null) return false;
+
+    final services = ServiceRegistry.forProject(projectId);
+    final prepared = await PreparedProjectSave.prepare(
+      project,
+      services.projectStorage,
+    );
+    try {
+      final result = await writeProjectDirectory(
+        path,
+        prepared,
+        create: createDirectory,
       );
-
-      await writeProjectFile(path!, project);
-
-      project.isDirty = false;
+      if (result.usesWorkingStore) {
+        services.savedProjectFiles.record(path, prepared.assets.reads.keys);
+      }
+      project.isDirty = prepared.changedDuringSave;
       project.filePath = path;
       return true;
+    } finally {
+      await prepared.close();
+    }
+  }
+
+  Future<bool> _downloadProjectZip(
+    ProjectModel project,
+    DialogController dialogController, {
+    required bool markSaved,
+  }) async {
+    final controller = TextEditingController(text: project.name);
+    final completed = Completer<String?>();
+    void cancel() {
+      if (!completed.isCompleted) completed.complete(null);
+    }
+
+    dialogController.showDialog(
+      content: SizedBox(
+        width: 300,
+        height: 70,
+        child: Column(
+          spacing: 12,
+          children: [
+            Text(
+              'Enter a file name for the project:',
+              style: TextStyle(fontSize: 13, color: AnthemTheme.text.main),
+            ),
+            SizedBox(
+              width: 161,
+              child: Center(child: TextBox(height: 26, controller: controller)),
+            ),
+          ],
+        ),
+      ),
+      title: 'Download project',
+      buttons: [
+        DialogButton.cancel(onPress: cancel),
+        DialogButton(
+          text: 'Download',
+          onPress: () => completed.complete(controller.text),
+        ),
+      ],
+      onDismiss: cancel,
+    );
+    final String? selectedName;
+    try {
+      selectedName = await completed.future;
+    } finally {
+      controller.dispose();
+    }
+    if (selectedName == null) return false;
+    var name = selectedName.trim();
+    if (name.isEmpty) name = project.name;
+    if (!name.toLowerCase().endsWith('.zip')) name += '.zip';
+
+    try {
+      final prepared = await PreparedProjectSave.prepare(
+        project,
+        ServiceRegistry.forProject(project.id).projectStorage,
+      );
+      try {
+        final bytes = await encodeProjectArchive(prepared);
+        await XFile.fromData(
+          bytes,
+          name: name,
+          mimeType: 'application/zip',
+        ).saveTo(name);
+        if (markSaved) project.isDirty = prepared.changedDuringSave;
+      } finally {
+        await prepared.close();
+      }
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not download project ZIP.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Download project',
+        markdown:
+            'Could not download project:\n\n${escapeDialogMarkdown(error.toString())}',
+        buttons: [DialogButton.ok()],
+      );
+      return false;
+    }
+  }
+
+  /// Exports a portable copy without changing the project's normal save target.
+  Future<bool> exportProjectZip(
+    ProjectId projectId, {
+    required DialogController dialogController,
+  }) async {
+    final project = AnthemStore.instance.projects[projectId]!;
+    if (kIsWeb) {
+      return _downloadProjectZip(project, dialogController, markSaved: false);
+    }
+    var archivePath = (await getSaveLocation(
+      suggestedName: '${project.name}.zip',
+      confirmButtonText: 'Export',
+      acceptedTypeGroups: [_projectZipType],
+    ))?.path;
+    if (archivePath == null) return false;
+    if (!archivePath.toLowerCase().endsWith('.zip')) archivePath += '.zip';
+    try {
+      final prepared = await PreparedProjectSave.prepare(
+        project,
+        ServiceRegistry.forProject(projectId).projectStorage,
+      );
+      try {
+        await writeProjectArchive(archivePath, prepared);
+      } finally {
+        await prepared.close();
+      }
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not export project ZIP.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Export to zip',
+        markdown:
+            'Could not export project:\n\n'
+            '${escapeDialogMarkdown(error.toString())}',
+        buttons: [DialogButton.ok()],
+      );
+      return false;
+    }
+  }
+
+  Future<String?> _projectSaveDirectory(ProjectModel project) async {
+    final existingPath = project.filePath;
+    if (existingPath != null) return paths.dirname(paths.dirname(existingPath));
+
+    try {
+      final directory =
+          await ServiceRegistry.applicationSettings.projectsDirectory;
+      if (directory == null) return null;
+      await Directory(directory).create(recursive: true);
+      return directory;
+    } catch (error, stackTrace) {
+      // A missing drive or unavailable preference store must not prevent saving
+      // elsewhere with the native file picker.
+      _log.warning(
+        'Could not prepare the default projects folder.',
+        error,
+        stackTrace,
+      );
+      return null;
     }
   }
 
@@ -279,12 +525,13 @@ class MainWindowController {
         .replaceAll(':', '-')
         .replaceAll('.', '-');
 
-    var path = await FilePicker.saveFile(
-      dialogTitle: 'Export Anthem logs',
-      fileName: 'anthem-logs-$timestamp.zip',
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-    );
+    var path = (await getSaveLocation(
+      suggestedName: 'anthem-logs-$timestamp.zip',
+      confirmButtonText: 'Export',
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'ZIP archives', extensions: ['zip']),
+      ],
+    ))?.path;
 
     if (path == null) {
       return false;

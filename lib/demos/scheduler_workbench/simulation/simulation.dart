@@ -219,9 +219,9 @@ abstract class _Simulation with Store {
       return Future<void>.value();
     }
 
-    final uncopiedInputCount = incomingConnectionsForNode(
-      node.id,
-    ).where((connection) => !connection.isCopied).length;
+    final uncopiedInputCount = incomingConnectionsForNode(node.id)
+        .where((connection) => !connection.isCopied)
+        .length;
 
     if (uncopiedInputCount > 0) {
       submitError(

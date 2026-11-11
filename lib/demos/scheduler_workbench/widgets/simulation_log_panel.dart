@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/material.dart' hide Simulation;
+import 'package:material_ui/material_ui.dart' hide Simulation;
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 import '../simulation/simulation.dart';

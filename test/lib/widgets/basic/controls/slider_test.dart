@@ -17,12 +17,92 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:anthem/widgets/basic/controls/slider.dart' as anthem;
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'bound sliders wait for an initial value without requiring the engine for cached display',
+    (tester) async {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final node = project
+          .tracks[project.sendTrackOrder.single]!
+          .requireProcessing
+          .utilityNode!;
+      final port = node.getPortById(UtilityProcessorModel.gainPortId);
+      var edits = 0;
+      final slider = anthem.Slider(
+        parameterBinding: anthem.ParameterUiBinding(node: node, port: port),
+        width: 100,
+        height: 20,
+        onValueChangeStart: () => edits++,
+      );
+      final unknown = await _paintSlider(tester, slider);
+      expect(_hasValueColor(unknown), isFalse);
+      expect(unknown.any((byte) => byte != 0), isTrue);
+      await tester.drag(find.byType(anthem.Slider), const Offset(20, 0));
+      expect(edits, 0);
+      port.parameterValue = 0.75;
+      final confirmed = await _paintSlider(tester, slider);
+      expect(_hasValueColor(confirmed), isTrue);
+      node.resetEngineInitialization();
+      final cached = await _paintSlider(tester, slider);
+      expect(cached, orderedEquals(confirmed));
+    },
+  );
+
+  testWidgets('unknown slider values omit every handle and fill style', (
+    tester,
+  ) async {
+    final project = ProjectModel.create();
+    addTearDown(project.dispose);
+    final node = project
+        .tracks[project.sendTrackOrder.single]!
+        .requireProcessing
+        .utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    for (final axis in anthem.SliderAxis.values) {
+      for (final handleType in anthem.SliderHandleType.values) {
+        for (final noBackground in [false, true]) {
+          final pixels = await _paintSlider(
+            tester,
+            anthem.Slider(
+              parameterBinding: anthem.ParameterUiBinding(
+                node: node,
+                port: port,
+              ),
+              width: axis == anthem.SliderAxis.horizontal ? 100 : 20,
+              height: axis == anthem.SliderAxis.horizontal ? 20 : 100,
+              axis: axis,
+              handleType: handleType,
+              noBackground: noBackground,
+            ),
+          );
+          expect(_hasValueColor(pixels), isFalse);
+          // Empty tracks contain only background/border grays, never a handle.
+          final grays = <int>{};
+          for (var index = 0; index < pixels.length; index += 4) {
+            if (pixels[index + 3] != 0) grays.add(pixels[index]);
+          }
+          if (noBackground) {
+            expect(grays, isEmpty);
+          } else {
+            expect(grays, isNotEmpty);
+            expect(grays.every((gray) => gray < 100), isTrue);
+          }
+        }
+      }
+    }
+  });
+
   group('Slider direct input', () {
     testWidgets('clicking the horizontal track snaps to the pointer', (
       tester,
@@ -102,6 +182,50 @@ void main() {
       await mouse.up();
     });
   });
+}
+
+Future<Uint8List> _paintSlider(
+  WidgetTester tester,
+  anthem.Slider slider,
+) async {
+  await tester.pumpWidget(
+    Directionality(
+      textDirection: TextDirection.ltr,
+      child: Center(child: slider),
+    ),
+  );
+  await tester.pump(Duration.zero);
+  final customPaint = tester.widget<CustomPaint>(
+    find.descendant(
+      of: find.byType(anthem.Slider),
+      matching: find.byType(CustomPaint),
+    ),
+  );
+  return (await tester.runAsync(() async {
+    final recorder = ui.PictureRecorder();
+    customPaint.painter!.paint(
+      ui.Canvas(recorder),
+      ui.Size(slider.width!, slider.height!),
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(
+      slider.width!.toInt(),
+      slider.height!.toInt(),
+    );
+    picture.dispose();
+    final bytes = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!
+        .buffer
+        .asUint8List();
+    image.dispose();
+    return bytes;
+  }))!;
+}
+
+bool _hasValueColor(Uint8List pixels) {
+  for (var index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 1] > pixels[index]) return true;
+  }
+  return false;
 }
 
 Future<void> _pumpDirectSlider(

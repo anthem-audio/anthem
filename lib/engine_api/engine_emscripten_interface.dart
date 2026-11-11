@@ -18,14 +18,27 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
+import 'package:anthem/engine_api/wasm_visualization_record_ring_buffer.dart';
+import 'package:anthem/helpers/emscripten_module.dart';
+import 'package:anthem/logic/storage/browser_file_system.dart';
 import 'package:flutter/scheduler.dart';
+
+class _PendingOutgoingMessage {
+  final Uint8List bytes;
+  int offset = 0;
+
+  _PendingOutgoingMessage(Uint8List bytes) : bytes = Uint8List.fromList(bytes);
+
+  int get bytesRemaining => bytes.length - offset;
+  bool get isComplete => offset == bytes.length;
+}
 
 class EngineEmscriptenInterface {
   static const _introBytesToSkip = 16;
@@ -35,29 +48,66 @@ class EngineEmscriptenInterface {
 
   late final WasmSharedMemoryRingBuffer readBuffer;
   late final WasmSharedMemoryRingBuffer writeBuffer;
+  late final WasmVisualizationRecordRingBufferReader
+  visualizationRingBufferReader;
 
-  List<MemoryBlock> outgoingMessages = [];
+  final Queue<_PendingOutgoingMessage> _outgoingMessages = ListQueue();
 
   void Function(Uint8List bytes)? onMessageReceived;
+  final void Function()? onPollVisualization;
+  final void Function()? onExit;
+  final Completer<void> _exited = Completer<void>();
+  JSObject? _mountedModule;
+  int? exitCode;
 
-  late final Ticker _readTicker;
-  late final Timer _readFallbackTimer;
+  Future<void> get exited => _exited.future;
+  bool get hasModule => _mountedModule != null;
+
+  Ticker? _readTicker;
+  Timer? _readFallbackTimer;
+  Timer? _readyCheckTimer;
+  Timer? _sendTimer;
+  Completer<void>? _readyCompleter;
+  bool _disposed = false;
+  bool _hasVisualizationReader = false;
   final Completer<void> _introMessageReceivedCompleter = Completer<void>();
-  bool _hasReceivedTickerTick = false;
+  final Stopwatch _sinceReadTick = Stopwatch()..start();
 
-  EngineEmscriptenInterface(this.exportName, {this.onMessageReceived});
+  EngineEmscriptenInterface(
+    this.exportName, {
+    this.onMessageReceived,
+    this.onPollVisualization,
+    this.onExit,
+  });
 
   Future<void> init() async {
-    final constructorAny = globalContext.getProperty(exportName.toJS);
-    if (!constructorAny.isA<JSFunction>()) {
-      throw Exception(
-        'EngineEmscriptenInterface: $exportName is not a function',
+    _ensureActive();
+    final files = await BrowserFileSystem.instance;
+    final constructor = await loadEmscriptenFactory(exportName);
+    _ensureActive();
+    final options = JSObject()
+      ..setProperty(
+        'preRun'.toJS,
+        [
+          ((JSObject module) {
+            _ensureActive();
+            files.mount(module);
+            _mountedModule = module;
+          }).toJS,
+        ].toJS,
+      )
+      ..setProperty(
+        'onExit'.toJS,
+        ((JSNumber status) {
+          exitCode = status.toDartInt;
+          final mounted = _mountedModule;
+          if (mounted != null) files.unmount(mounted);
+          if (!_exited.isCompleted) _exited.complete();
+          onExit?.call();
+        }).toJS,
       );
-    }
 
-    final constructor = constructorAny as JSFunction;
-
-    final appInstancePromiseAny = constructor.callAsFunction();
+    final appInstancePromiseAny = constructor.callAsFunction(null, options);
     if (!appInstancePromiseAny.isA<JSPromise>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName did not return a Promise',
@@ -66,6 +116,7 @@ class EngineEmscriptenInterface {
 
     final appInstancePromise = appInstancePromiseAny as JSPromise;
     final appInstanceAny = await appInstancePromise.toDart;
+    _ensureActive();
     if (!appInstanceAny.isA<JSObject>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName Promise did not resolve to an object',
@@ -74,8 +125,9 @@ class EngineEmscriptenInterface {
     appInstance = appInstanceAny as JSObject;
 
     final completer = Completer<void>();
+    _readyCompleter = completer;
 
-    Timer.periodic(Duration(milliseconds: 100), (timer) {
+    _readyCheckTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
       final isCommsReadyAny = appInstance.getProperty('_isCommsReady'.toJS);
       if (isCommsReadyAny.isA<JSFunction>()) {
         final result = (isCommsReadyAny as JSFunction).callAsFunction();
@@ -106,6 +158,8 @@ class EngineEmscriptenInterface {
     });
 
     await completer.future;
+    _readyCompleter = null;
+    _ensureActive();
 
     JSFunction getAsFunction(String functionName) {
       final funcAny = appInstance.getProperty(functionName.toJS);
@@ -117,9 +171,8 @@ class EngineEmscriptenInterface {
       return funcAny as JSFunction;
     }
 
-    final readBufferHeadPtrAny = getAsFunction(
-      '_getReadBufferHeadPtr',
-    ).callAsFunction();
+    final readBufferHeadPtrAny = getAsFunction('_getReadBufferHeadPtr')
+        .callAsFunction();
     if (!readBufferHeadPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferHeadPtr did not return a number',
@@ -127,9 +180,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferHeadPtr = readBufferHeadPtrAny as JSNumber;
 
-    final readBufferTailPtrAny = getAsFunction(
-      '_getReadBufferTailPtr',
-    ).callAsFunction();
+    final readBufferTailPtrAny = getAsFunction('_getReadBufferTailPtr')
+        .callAsFunction();
     if (!readBufferTailPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferTailPtr did not return a number',
@@ -137,9 +189,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferTailPtr = readBufferTailPtrAny as JSNumber;
 
-    final readBufferCapacityAny = getAsFunction(
-      '_getReadBufferCapacity',
-    ).callAsFunction();
+    final readBufferCapacityAny = getAsFunction('_getReadBufferCapacity')
+        .callAsFunction();
     if (!readBufferCapacityAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferCapacity did not return a number',
@@ -147,9 +198,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferCapacity = readBufferCapacityAny as JSNumber;
 
-    final readBufferMaskAny = getAsFunction(
-      '_getReadBufferMask',
-    ).callAsFunction();
+    final readBufferMaskAny = getAsFunction('_getReadBufferMask')
+        .callAsFunction();
     if (!readBufferMaskAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferMask did not return a number',
@@ -157,9 +207,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferMask = readBufferMaskAny as JSNumber;
 
-    final readBufferDataPtrAny = getAsFunction(
-      '_getReadBufferDataPtr',
-    ).callAsFunction();
+    final readBufferDataPtrAny = getAsFunction('_getReadBufferDataPtr')
+        .callAsFunction();
     if (!readBufferDataPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferDataPtr did not return a number',
@@ -167,9 +216,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferDataPtr = readBufferDataPtrAny as JSNumber;
 
-    final readBufferTicketPtrAny = getAsFunction(
-      '_getReadBufferTicketPtr',
-    ).callAsFunction();
+    final readBufferTicketPtrAny = getAsFunction('_getReadBufferTicketPtr')
+        .callAsFunction();
     if (!readBufferTicketPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferTicketPtr did not return a number',
@@ -187,9 +235,8 @@ class EngineEmscriptenInterface {
       ticketPtr: readBufferTicketPtr.toDartInt,
     );
 
-    final writeBufferHeadPtrAny = getAsFunction(
-      '_getWriteBufferHeadPtr',
-    ).callAsFunction();
+    final writeBufferHeadPtrAny = getAsFunction('_getWriteBufferHeadPtr')
+        .callAsFunction();
     if (!writeBufferHeadPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferHeadPtr did not return a number',
@@ -197,9 +244,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferHeadPtr = writeBufferHeadPtrAny as JSNumber;
 
-    final writeBufferTailPtrAny = getAsFunction(
-      '_getWriteBufferTailPtr',
-    ).callAsFunction();
+    final writeBufferTailPtrAny = getAsFunction('_getWriteBufferTailPtr')
+        .callAsFunction();
     if (!writeBufferTailPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferTailPtr did not return a number',
@@ -207,9 +253,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferTailPtr = writeBufferTailPtrAny as JSNumber;
 
-    final writeBufferCapacityAny = getAsFunction(
-      '_getWriteBufferCapacity',
-    ).callAsFunction();
+    final writeBufferCapacityAny = getAsFunction('_getWriteBufferCapacity')
+        .callAsFunction();
     if (!writeBufferCapacityAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferCapacity did not return a number',
@@ -217,9 +262,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferCapacity = writeBufferCapacityAny as JSNumber;
 
-    final writeBufferMaskAny = getAsFunction(
-      '_getWriteBufferMask',
-    ).callAsFunction();
+    final writeBufferMaskAny = getAsFunction('_getWriteBufferMask')
+        .callAsFunction();
     if (!writeBufferMaskAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferMask did not return a number',
@@ -227,9 +271,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferMask = writeBufferMaskAny as JSNumber;
 
-    final writeBufferDataPtrAny = getAsFunction(
-      '_getWriteBufferDataPtr',
-    ).callAsFunction();
+    final writeBufferDataPtrAny = getAsFunction('_getWriteBufferDataPtr')
+        .callAsFunction();
     if (!writeBufferDataPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferDataPtr did not return a number',
@@ -237,9 +280,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferDataPtr = writeBufferDataPtrAny as JSNumber;
 
-    final writeBufferTicketPtrAny = getAsFunction(
-      '_getWriteBufferTicketPtr',
-    ).callAsFunction();
+    final writeBufferTicketPtrAny = getAsFunction('_getWriteBufferTicketPtr')
+        .callAsFunction();
     if (!writeBufferTicketPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferTicketPtr did not return a number',
@@ -257,12 +299,19 @@ class EngineEmscriptenInterface {
       ticketPtr: writeBufferTicketPtr.toDartInt,
     );
 
+    visualizationRingBufferReader = WasmVisualizationRecordRingBufferReader(
+      appInstance,
+    );
+    _hasVisualizationReader = true;
+
     _setUpReadTicker();
     await _introMessageReceivedCompleter.future;
+    _ensureActive();
   }
 
   void sendMessage(Uint8List bytes) {
-    outgoingMessages.add(MemoryBlock.fromTypedList(bytes));
+    if (_disposed) return;
+    _outgoingMessages.add(_PendingOutgoingMessage(bytes));
     _scheduleSendPendingMessages();
   }
 
@@ -273,10 +322,11 @@ class EngineEmscriptenInterface {
   static const _fullBufferRetryDelay = Duration(milliseconds: 1);
 
   void _scheduleSendPendingMessages([Duration delay = Duration.zero]) {
-    if (_isSendScheduled) return;
+    if (_disposed || _isSendScheduled) return;
 
     _isSendScheduled = true;
-    Timer(delay, () {
+    _sendTimer = Timer(delay, () {
+      _sendTimer = null;
       _isSendScheduled = false;
       _sendPendingMessages();
     });
@@ -290,26 +340,28 @@ class EngineEmscriptenInterface {
   }
 
   void _sendPendingMessages() {
-    if (_isSendActive) return;
+    if (_disposed || _isSendActive) return;
 
     _isSendActive = true;
     var didWriteBytes = false;
     var bytesRemainingInPass = _maxBytesPerSendPass;
 
     try {
-      while (outgoingMessages.isNotEmpty && bytesRemainingInPass > 0) {
-        final message = outgoingMessages.first;
-        final messageData = message.buffer;
-        final bytesToAttempt = min(messageData.length, bytesRemainingInPass);
+      while (_outgoingMessages.isNotEmpty && bytesRemainingInPass > 0) {
+        final message = _outgoingMessages.first;
+        final bytesToAttempt = min(
+          message.bytesRemaining,
+          bytesRemainingInPass,
+        );
 
         var bytesWrittenFromMessage = 0;
         while (bytesWrittenFromMessage < bytesToAttempt) {
           final success = writeBuffer.tryEnqueue(
-            messageData[bytesWrittenFromMessage],
+            message.bytes[message.offset + bytesWrittenFromMessage],
           );
           if (!success) {
             if (bytesWrittenFromMessage > 0) {
-              message.removeRange(0, bytesWrittenFromMessage);
+              message.offset += bytesWrittenFromMessage;
               didWriteBytes = true;
             }
 
@@ -324,10 +376,9 @@ class EngineEmscriptenInterface {
           bytesWrittenFromMessage++;
         }
 
-        if (bytesWrittenFromMessage == messageData.length) {
-          outgoingMessages.removeAt(0);
-        } else if (bytesWrittenFromMessage > 0) {
-          message.removeRange(0, bytesWrittenFromMessage);
+        message.offset += bytesWrittenFromMessage;
+        if (message.isComplete) {
+          _outgoingMessages.removeFirst();
         }
 
         if (bytesWrittenFromMessage > 0) {
@@ -340,7 +391,7 @@ class EngineEmscriptenInterface {
         _notifyWriteBufferChanged();
       }
 
-      if (outgoingMessages.isNotEmpty) {
+      if (_outgoingMessages.isNotEmpty) {
         _scheduleSendPendingMessages();
       }
     } finally {
@@ -374,23 +425,24 @@ class EngineEmscriptenInterface {
     // and the timer makes sure control-plane traffic is still drained during
     // startup or any other period where frames are not being produced yet.
     _readTicker = Ticker((elapsed) {
-      if (!_hasReceivedTickerTick) {
-        _hasReceivedTickerTick = true;
-        _readFallbackTimer.cancel();
-      }
-
+      _sinceReadTick.reset();
       _tryRead();
+      onPollVisualization?.call();
     });
 
     _readFallbackTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
-      _tryRead();
+      if (_sinceReadTick.elapsedMilliseconds >= 16) {
+        _tryRead();
+        onPollVisualization?.call();
+      }
     });
 
-    _readTicker.start();
+    _readTicker!.start();
   }
 
   var _introBytesSkipped = 0;
   void _tryRead() {
+    if (_disposed || exitCode != null) return;
     var size = readBuffer.size();
     if (size == 0) return;
 
@@ -449,5 +501,30 @@ class EngineEmscriptenInterface {
     }
 
     onMessageReceived?.call(builder.toBytes());
+  }
+
+  void _ensureActive() {
+    if (_disposed) throw StateError('The engine interface has been disposed.');
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _readyCheckTimer?.cancel();
+    _sendTimer?.cancel();
+    _readFallbackTimer?.cancel();
+    _readTicker?.dispose();
+    _outgoingMessages.clear();
+    if (_hasVisualizationReader) visualizationRingBufferReader.close();
+    final ready = _readyCompleter;
+    if (ready != null && !ready.isCompleted) {
+      ready.completeError(StateError('Engine initialization was cancelled.'));
+    }
+    if (_readTicker != null && !_introMessageReceivedCompleter.isCompleted) {
+      _introMessageReceivedCompleter.completeError(
+        StateError('Engine initialization was cancelled.'),
+      );
+    }
+    onMessageReceived = null;
   }
 }
