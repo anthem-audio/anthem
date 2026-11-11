@@ -351,7 +351,13 @@ void main() {
       scopeId = store.openScope();
       final read = scopeId.acquireRead(relativePath);
       expect(await File(read.absolutePath).readAsString(), 'saved data');
-      expect(path.isWithin(movedPath, read.absolutePath), isTrue);
+      expect(
+        await FileSystemEntity.identical(
+          path.joinAll([movedPath, ...relativePath.split('/')]),
+          read.absolutePath,
+        ),
+        isTrue,
+      );
       scopeId.releaseRead(read.token);
       expect(
         await writeObject(name: 'bass', extension: 'wav'),

@@ -133,7 +133,13 @@ void main() {
       project.fileRetentions = '{}';
       await storage.restoreProjectFiles({});
       final store = await storage.assetStore;
-      expect(store.rootDirectory, storage.rootDirectory);
+      expect(
+        await FileSystemEntity.identical(
+          store.rootDirectory,
+          storage.rootDirectory,
+        ),
+        isTrue,
+      );
     },
   );
 
