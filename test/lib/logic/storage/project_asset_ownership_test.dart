@@ -344,7 +344,7 @@ void main() {
       };
       final backgroundErrors = <Object>[];
       runZonedGuarded(
-        node.scheduleDebouncedStateUpdate,
+        node.scheduleThrottledStateUpdate,
         (error, _) => backgroundErrors.add(error),
       );
       await node.updateStateFromEngine().timeout(const Duration(seconds: 2));

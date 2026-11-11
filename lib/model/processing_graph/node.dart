@@ -418,7 +418,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   int _initializationGeneration = 0;
 
   @hide
-  TimerDebouncedAction? _stateUpdateDebouncedAction;
+  TimerThrottledAction? _stateUpdateThrottle;
 
   /// The control input port ID of the most recently touched parameter.
   @anthemObservable
@@ -434,12 +434,12 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   @hideFromCpp
   NodeOwnerModel? owner;
 
-  /// Schedules a state update for the processor.
+  /// Schedules a processor state capture, at most once per second.
   ///
-  /// This sends a request to the engine to get the current state of the
-  /// processor. This is debounced to avoid excessive requests.
-  void scheduleDebouncedStateUpdate() async {
-    _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
+  /// The first request starts immediately. Further requests during the cooldown
+  /// schedule a final capture when the cooldown ends.
+  void scheduleThrottledStateUpdate() async {
+    _stateUpdateThrottle ??= TimerThrottledAction(() async {
       try {
         await updateStateFromEngine();
       } catch (error, stack) {
@@ -450,7 +450,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
         );
       }
     }, Duration(seconds: 1));
-    _stateUpdateDebouncedAction!.execute();
+    _stateUpdateThrottle!.execute();
   }
 
   @hide
@@ -536,8 +536,8 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   void _invalidateStateCaptures() {
     _initializationGeneration++;
-    _stateUpdateDebouncedAction?.dispose();
-    _stateUpdateDebouncedAction = null;
+    _stateUpdateThrottle?.dispose();
+    _stateUpdateThrottle = null;
   }
 
   void _invalidateInitialization(NodeInitializationState state) {

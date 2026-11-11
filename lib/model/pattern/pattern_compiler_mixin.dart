@@ -23,21 +23,25 @@ mixin _PatternCompilerMixin on _PatternModel {
   static const Id _noTrackEventListKey = -1;
   // 0x001F_FFFF_FFFF_FFFF is the max safe integer in JavaScript.
   static const int _unboundedClipEnd = 0x001F_FFFF_FFFF_FFFF;
-  static const Duration _automationCompileDebounce = Duration(milliseconds: 75);
+  static const Duration _automationCompileInterval = Duration(milliseconds: 75);
 
   final InvalidationRangeCollector _patternInvalidationRangeCollector =
       InvalidationRangeCollector();
   final InvalidationRangeCollector _arrangementInvalidationRangeCollector =
       InvalidationRangeCollector();
   bool _updateArrangements = false;
-  bool _isImmediateCompileScheduled = false;
   bool _automationChanged = false;
 
-  late final TimerDebouncedAction _automationCompileAction =
-      TimerDebouncedAction(
-        _flushScheduledPatternCompile,
-        _automationCompileDebounce,
-      );
+  // Pattern listeners run before the root listener sends model updates to
+  // the engine. Defer compilation until that notification has finished.
+  late final _compileAfterModelChanges = MicrotaskDebouncedAction(
+    _flushScheduledPatternCompile,
+  );
+
+  late final _automationCompileThrottle = TimerThrottledAction(
+    _compileAfterModelChanges.execute,
+    _automationCompileInterval,
+  );
 
   void _addPatternInvalidationRange(int start, int end) {
     if (end <= start) {
@@ -141,7 +145,7 @@ mixin _PatternCompilerMixin on _PatternModel {
     }
 
     _automationChanged = true;
-    _schedulePatternCompile(updateArrangements: true, debounce: true);
+    _schedulePatternCompile(updateArrangements: true, throttle: true);
   }
 
   void _recompileOnAutomationPointFieldChanged(ModelChangeEvent change) {
@@ -160,7 +164,7 @@ mixin _PatternCompilerMixin on _PatternModel {
     }
 
     _automationChanged = true;
-    _schedulePatternCompile(updateArrangements: true, debounce: true);
+    _schedulePatternCompile(updateArrangements: true, throttle: true);
   }
 
   void _compileAffectedArrangements() {
@@ -264,25 +268,16 @@ mixin _PatternCompilerMixin on _PatternModel {
 
   void _schedulePatternCompile({
     required bool updateArrangements,
-    bool debounce = false,
+    bool throttle = false,
   }) {
     _updateArrangements = _updateArrangements || updateArrangements;
 
-    if (debounce) {
-      _automationCompileAction.execute();
+    if (throttle) {
+      _automationCompileThrottle.execute();
       return;
     }
 
-    if (_isImmediateCompileScheduled) {
-      return;
-    }
-
-    _isImmediateCompileScheduled = true;
-
-    Future.microtask(() {
-      _isImmediateCompileScheduled = false;
-      _flushScheduledPatternCompile();
-    });
+    _compileAfterModelChanges.execute();
   }
 
   /// Compiles the entire pattern in the engine.

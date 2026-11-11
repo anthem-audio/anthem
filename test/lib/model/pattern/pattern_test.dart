@@ -58,7 +58,7 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-Future<void> _waitForAutomationCompileDebounce() async {
+Future<void> _waitForAutomationCompileThrottle() async {
   await Future<void>.delayed(const Duration(milliseconds: 125));
   await _flushMicrotasks();
 }
@@ -453,6 +453,79 @@ void main() {
     });
 
     test(
+      'an extended automation clip compiles its new end point after model sync',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final project = ProjectModel.create()
+          ..engine = _RunningEngine(sequencerApi);
+        final pattern = PatternModel(
+          idAllocator: project.idAllocator,
+          name: 'Automation Pattern',
+        );
+        pattern.automation.points.addAll([
+          AutomationPointModel(
+            idAllocator: project.idAllocator,
+            offset: 0,
+            value: 0.25,
+          ),
+          AutomationPointModel(
+            idAllocator: project.idAllocator,
+            offset: 96,
+            value: 0.5,
+          ),
+        ]);
+        project.sequence.patterns[pattern.id] = pattern;
+        final trackId = project.trackOrder.first;
+        final clip = ClipModel(
+          idAllocator: project.idAllocator,
+          patternId: pattern.id,
+          trackId: trackId,
+          offset: 0,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        project.sequence.arrangement.clips[clip.id] = clip;
+        await _flushMicrotasks();
+
+        clip.timeView = TimeViewModel(start: 0, end: 192);
+        await _flushMicrotasks();
+
+        // Engine model updates are sent by a root listener, after the pattern
+        // listener that requests compilation. Record what compilation sees at
+        // that boundary rather than reading the already-updated Dart model.
+        var syncedOffsets = [0, 96];
+        project.addRawFieldChangedListener((change) {
+          if (change.fieldAccessors.any(
+            (accessor) => accessor.fieldName == 'automation',
+          )) {
+            syncedOffsets = pattern.automation.points
+                .map((point) => point.offset)
+                .toList();
+          }
+        });
+        List<int>? compiledOffsets;
+        when(
+          sequencerApi.compileArrangement(
+            tracksToRebuild: anyNamed('tracksToRebuild'),
+            invalidationRanges: anyNamed('invalidationRanges'),
+          ),
+        ).thenAnswer((_) {
+          compiledOffsets = List.of(syncedOffsets);
+        });
+
+        pattern.automation.points.add(
+          AutomationPointModel(
+            idAllocator: project.idAllocator,
+            offset: 192,
+            value: 1,
+          ),
+        );
+        await _waitForAutomationCompileThrottle();
+
+        expect(compiledOffsets, [0, 96, 192]);
+      },
+    );
+
+    test(
       'rate-limits automation point changes and keeps trailing compile',
       () async {
         final sequencerApi = _MockSequencerApi();
@@ -493,8 +566,6 @@ void main() {
         clearInteractions(sequencerApi);
 
         firstPoint.value = 0.3;
-        firstPoint.value = 0.4;
-        firstPoint.value = 0.5;
 
         await _flushMicrotasks();
 
@@ -527,7 +598,12 @@ void main() {
 
         clearInteractions(sequencerApi);
 
-        await _waitForAutomationCompileDebounce();
+        firstPoint.value = 0.4;
+        firstPoint.value = 0.5;
+        await _flushMicrotasks();
+        verifyZeroInteractions(sequencerApi);
+
+        await _waitForAutomationCompileThrottle();
 
         final trailingPatternCompileVerification = verify(
           sequencerApi.compilePattern(

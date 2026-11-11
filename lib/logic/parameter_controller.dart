@@ -104,7 +104,7 @@ class ParameterController {
       if (editId > (_confirmedEditIds[key] ?? -1)) {
         _confirmedEditIds[key] = editId;
         applyEngineValues(node.id, [accepted]);
-        node.scheduleDebouncedStateUpdate();
+        node.scheduleThrottledStateUpdate();
       }
       return accepted.value;
     } finally {

@@ -1495,7 +1495,7 @@ void main() {
       );
 
       verify(node.touchControlInputParameter(any)).called(1);
-      verify(node.scheduleDebouncedStateUpdate()).called(2);
+      verify(node.scheduleThrottledStateUpdate()).called(2);
     });
 
     test('plugin parameter snapshots update values without scheduling state update', () async {
@@ -1539,7 +1539,7 @@ void main() {
       expect(port.parameterValue, 0.25);
       expect(port.parameterDisplayText, '440');
       verifyNever(node.touchControlInputParameter(any));
-      verifyNever(node.scheduleDebouncedStateUpdate());
+      verifyNever(node.scheduleThrottledStateUpdate());
     });
 
     test('plugin parameter gestures push one undo command', () async {
@@ -1795,7 +1795,7 @@ void main() {
       verifyNever(project.push(any));
       expect(ports[1]!.parameterValue, 0.8);
       expect(ports[1]!.parameterDisplayText, '80%');
-      verify(nodes[1]!.scheduleDebouncedStateUpdate()).called(1);
+      verify(nodes[1]!.scheduleThrottledStateUpdate()).called(1);
       connector.emitMessage(
         ProcessorParameterGestureEvent(
           nodeId: 2,

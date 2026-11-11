@@ -57,7 +57,7 @@ class ProjectEngineEventHandler {
 
     switch (event) {
       case PluginChangedEvent():
-        node.scheduleDebouncedStateUpdate();
+        node.scheduleThrottledStateUpdate();
         return;
       case ProcessorParameterChangedEvent e:
         _handleParameterChanged(node, e);
@@ -82,7 +82,7 @@ class ProjectEngineEventHandler {
             markTouched: port?.parameterValue != parameter.value,
           );
         }
-        node.scheduleDebouncedStateUpdate();
+        node.scheduleThrottledStateUpdate();
         return;
     }
   }
@@ -133,7 +133,7 @@ class ProjectEngineEventHandler {
       markTouched: true,
     );
 
-    node.scheduleDebouncedStateUpdate();
+    node.scheduleThrottledStateUpdate();
   }
 
   void _handleParameterGesture(
