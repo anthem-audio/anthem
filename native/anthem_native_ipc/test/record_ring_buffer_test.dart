@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:test/test.dart';
+
+import 'helpers/run_bundled_child.dart';
 
 void main() {
   test('records survive cursor rollover and fill the maximum record size', () {
@@ -165,25 +165,10 @@ void main() {
     addTearDown(region.close);
     addTearDown(reader.close);
 
-    final libraryUri = await Isolate.resolvePackageUri(
-      Uri.parse('package:anthem_native_ipc/anthem_native_ipc.dart'),
-    );
-    if (libraryUri == null) {
-      fail('Could not resolve the anthem_native_ipc package directory.');
-    }
-
-    final packageDirectory = File.fromUri(libraryUri).parent.parent;
-    final repositoryDirectory = packageDirectory.parent.parent;
-    final childScript = packageDirectory.uri
-        .resolve('test/helpers/record_ring_buffer_child.dart')
-        .toFilePath();
-
-    final result = await Process.run(Platform.resolvedExecutable, [
-      'run',
-      childScript,
+    final result = await runBundledChild('record_ring_buffer_child', [
       region.identifier,
       region.size.toString(),
-    ], workingDirectory: repositoryDirectory.path);
+    ]);
 
     expect(
       result.exitCode,
@@ -192,7 +177,7 @@ void main() {
     );
     expect(reader.tryAcquire(), orderedEquals([11, 22, 33, 44]));
     reader.release();
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('invalid regions and closed endpoints are rejected', () {
     final smallRegion = SharedMemoryRegion.create(128);

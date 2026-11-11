@@ -15,3 +15,10 @@ The writer publishes complete records or returns false; the reader acquires a
 contiguous view which remains valid until release. Close endpoints before closing
 their mapping. `availableBytes` includes record headers and wrap padding and can
 be used to inspect queue pressure.
+
+Run `dart test` from this package to test the native primitives. The two
+cross-process tests use `dart build cli` to build their helpers into separate
+temporary bundles, then launch the resulting executables. Each bundle has its
+own native library, so the children can run concurrently without replacing the
+library loaded by the parent test process. The bundles are removed after the
+children exit.

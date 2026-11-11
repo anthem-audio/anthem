@@ -18,10 +18,11 @@
 */
 
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:test/test.dart';
+
+import 'helpers/run_bundled_child.dart';
 
 void main() {
   // Include the engine's ring size: 16 MiB of records plus 128 bytes of cursors.
@@ -71,27 +72,10 @@ void main() {
     addTearDown(creator.close);
     creator.bytes[0] = 37;
 
-    final libraryUri = await Isolate.resolvePackageUri(
-      Uri.parse('package:anthem_native_ipc/anthem_native_ipc.dart'),
-    );
-    if (libraryUri == null) {
-      fail('Could not resolve the anthem_native_ipc package directory.');
-    }
-
-    final packageDirectory = File.fromUri(libraryUri).parent.parent;
-    final repositoryDirectory = packageDirectory.parent.parent;
-    final childScript = packageDirectory.uri
-        .resolve('test/helpers/shared_memory_child.dart')
-        .toFilePath();
-
-    final result = await Process.run(
-      Platform.resolvedExecutable,
-      ['run', childScript, creator.identifier, creator.size.toString()],
-      // Use the repository root so the child bundles its native asset into a
-      // different directory from the library currently loaded by this test
-      // process. Windows does not allow an in-use DLL to be replaced.
-      workingDirectory: repositoryDirectory.path,
-    );
+    final result = await runBundledChild('shared_memory_child', [
+      creator.identifier,
+      creator.size.toString(),
+    ]);
 
     expect(
       result.exitCode,
@@ -99,7 +83,7 @@ void main() {
       reason: 'stdout: ${result.stdout}\nstderr: ${result.stderr}',
     );
     expect(creator.bytes.last, 91);
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('existing mappings remain valid after the identifier is removed', () {
     final creator = SharedMemoryRegion.create(4096);
